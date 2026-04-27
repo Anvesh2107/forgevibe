@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: forgevibe-ai-worker
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: forgevibe-ai-worker
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.add.type.headers: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+
+# Optional: real OpenAI API key. If blank, uses deterministic mock scoring.
+ai:
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: gpt-4o-mini

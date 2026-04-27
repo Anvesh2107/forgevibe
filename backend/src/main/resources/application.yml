@@ -1,0 +1,75 @@
+spring:
+  application:
+    name: forgevibe-backend
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/forgevibe}
+    username: ${SPRING_DATASOURCE_USERNAME:forgevibe}
+    password: ${SPRING_DATASOURCE_PASSWORD:forgevibe_secret}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    defer-datasource-initialization: true
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:data.sql
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: forgevibe-backend
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.add.type.headers: false
+
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID:not-configured}
+            client-secret: ${GITHUB_CLIENT_SECRET:not-configured}
+            scope:
+              - read:user
+              - user:email
+            redirect-uri: "${APP_BASE_URL:http://localhost:3000}/login/oauth2/code/github"
+
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: always
+
+server:
+  port: 8080
+  servlet:
+    session:
+      timeout: 24h
+      cookie:
+        same-site: lax
+        http-only: true
+
+app:
+  frontend-url: ${APP_BASE_URL:http://localhost:3000}
+
+logging:
+  level:
+    com.forgevibe: INFO
+    org.springframework.kafka: WARN
+    org.hibernate.SQL: WARN

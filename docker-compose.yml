@@ -1,0 +1,131 @@
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: forgevibe-postgres
+    environment:
+      POSTGRES_DB: forgevibe
+      POSTGRES_USER: forgevibe
+      POSTGRES_PASSWORD: forgevibe_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forgevibe"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Zookeeper ─────────────────────────────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: forgevibe-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc localhost 2181 | grep -q '^Mode:'"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Kafka ─────────────────────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: forgevibe-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # ── Kafka UI (Kafdrop) ────────────────────────────────────────────────────────
+  kafka-ui:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: forgevibe-kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERCONNECT: kafka:9092
+      JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication"
+    ports:
+      - "9000:9000"
+
+  # ── Spring Boot Backend ───────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: forgevibe-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/forgevibe
+      SPRING_DATASOURCE_USERNAME: forgevibe
+      SPRING_DATASOURCE_PASSWORD: forgevibe_secret
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-not-configured}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-not-configured}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/feed > /dev/null || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ── AI Worker ─────────────────────────────────────────────────────────────────
+  ai-worker:
+    build:
+      context: ./ai-worker
+      dockerfile: Dockerfile
+    container_name: forgevibe-ai-worker
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+  # ── React Frontend ────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: forgevibe-frontend
+
+  # ── Nginx Reverse Proxy ───────────────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: forgevibe-nginx
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+volumes:
+  postgres_data:
