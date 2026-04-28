@@ -103,8 +103,8 @@ export default function PostComposer({ onPosted }: { onPosted?: () => void }) {
       }
 
       if (finalData.status === "published") {
-        queryClient.invalidateQueries({ queryKey: ["/api/thoughts"] });
-        queryClient.refetchQueries({ queryKey: ["/api/feed"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/thoughts"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/feed"] });
         setThoughtResult({ kind: "published" });
         onPosted?.();
         setTimeout(() => closeAndReset(), 1500);
@@ -114,8 +114,8 @@ export default function PostComposer({ onPosted }: { onPosted?: () => void }) {
         setThoughtResult({ kind: "blocked", reason: finalData.aiReason || "AI determined this is not tech-relevant enough.", thoughtId: finalData.id });
       } else {
         // Still pending after timeout — optimistically publish
-        queryClient.invalidateQueries({ queryKey: ["/api/thoughts"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/feed"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/thoughts"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/feed"] });
         setThoughtResult({ kind: "published" });
         onPosted?.();
         setTimeout(() => closeAndReset(), 1500);
@@ -236,8 +236,8 @@ export default function PostComposer({ onPosted }: { onPosted?: () => void }) {
               <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 flex items-start gap-2">
                 <Brain className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Share <strong className="text-foreground">any tech idea</strong> — architecture opinions, lessons learned, AI insights, hot takes.
-                  Our AI reviews for tech relevance (<strong className="text-foreground">80%+ score</strong> to publish). Non-tech content is rejected.
+                  Share <strong className="text-foreground">any tech idea</strong> — architecture opinions, lessons learned, AI insights, hot takes, questions, or project updates.
+                  Our AI checks for tech relevance. Most posts from builders get through.
                 </p>
               </div>
 
@@ -414,13 +414,14 @@ export default function PostComposer({ onPosted }: { onPosted?: () => void }) {
               <form onSubmit={handleSubmit(onSubmitProject)} className="space-y-4 pt-1">
                 <div className="space-y-1.5">
                   <Label className="flex items-center gap-1.5 text-sm">
-                    <Github className="w-3.5 h-3.5" /> GitHub Repository URL
+                    <Github className="w-3.5 h-3.5" /> Project URL
+                    <span className="text-muted-foreground font-normal text-xs">(GitHub or any web link)</span>
                   </Label>
                   <Input
-                    placeholder="https://github.com/username/repo"
+                    placeholder="https://github.com/username/repo or https://myapp.com"
                     {...register("githubUrl", {
-                      required: "GitHub URL required",
-                      pattern: { value: /^https:\/\/github\.com\/.+\/.+/, message: "Must be a valid GitHub URL" },
+                      required: "Project URL required",
+                      pattern: { value: /^https?:\/\/.+/, message: "Must be a valid URL starting with https://" },
                     })}
                     data-testid="composer-github-url"
                   />

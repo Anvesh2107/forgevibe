@@ -9,4 +9,5 @@ public class ProjectSubmittedEvent {
     private String title;
     private String description;
     private String stack;
+    private String repoUrl;
 }

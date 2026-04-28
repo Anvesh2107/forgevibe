@@ -7,4 +7,5 @@ import java.util.List;
 public interface ProjectRepository extends JpaRepository<Project, Long> {
     List<Project> findAllByOrderByCreatedAtDesc();
     List<Project> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
+    List<Project> findByStackContainingIgnoreCaseOrderByCreatedAtDesc(String tag);
 }

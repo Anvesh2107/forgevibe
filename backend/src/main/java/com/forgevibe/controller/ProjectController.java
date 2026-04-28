@@ -88,6 +88,14 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.diamondProject(id, requireUser(session), note));
     }
 
+    /** POST /api/projects/:id/reanalyze */
+    @PostMapping("/{id}/reanalyze")
+    public ResponseEntity<ProjectResponse> reanalyze(@PathVariable Long id, HttpSession session) {
+        Long userId = sessionUser.getUserId(session);
+        User viewer = userId != null ? userService.getById(userId) : null;
+        return ResponseEntity.ok(projectService.retriggerAnalysis(id, viewer));
+    }
+
     /** GET /api/projects/:id/comments */
     @GetMapping("/{id}/comments")
     public ResponseEntity<List<CommentResponse>> getComments(@PathVariable Long id) {

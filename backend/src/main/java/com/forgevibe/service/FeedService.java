@@ -26,10 +26,11 @@ public class FeedService {
      * Returns a unified feed sorted by createdAt desc.
      * filter: "all" | "thoughts" | "projects"
      */
-    public List<FeedItemResponse> getFeed(String filter, User viewer) {
+    public List<FeedItemResponse> getFeed(String filter, String tag, User viewer) {
         List<FeedItemResponse> items = new ArrayList<>();
+        boolean tagged = tag != null && !tag.isBlank();
 
-        if (!"projects".equals(filter)) {
+        if (!tagged && !"projects".equals(filter)) {
             thoughtRepo.findByStatusOrderByCreatedAtDesc("published")
                     .forEach(t -> items.add(FeedItemResponse.builder()
                             .type("thought")
@@ -38,7 +39,9 @@ public class FeedService {
         }
 
         if (!"thoughts".equals(filter)) {
-            projectRepo.findAllByOrderByCreatedAtDesc()
+            (tagged
+                    ? projectRepo.findByStackContainingIgnoreCaseOrderByCreatedAtDesc(tag)
+                    : projectRepo.findAllByOrderByCreatedAtDesc())
                     .forEach(p -> items.add(FeedItemResponse.builder()
                             .type("project")
                             .project(projectService.toResponse(p, viewer))

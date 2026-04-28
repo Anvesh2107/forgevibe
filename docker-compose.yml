@@ -12,6 +12,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U forgevibe"]
       interval: 10s
@@ -27,6 +32,11 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "echo srvr | nc localhost 2181 | grep -q '^Mode:'"]
       interval: 5s
@@ -48,6 +58,11 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     ports:
       - "9092:9092"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
     healthcheck:
       test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
       interval: 15s
@@ -66,6 +81,11 @@ services:
       JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication"
     ports:
       - "9000:9000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ── Spring Boot Backend ───────────────────────────────────────────────────────
   backend:
@@ -88,6 +108,11 @@ services:
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
     ports:
       - "8080:8080"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/feed > /dev/null || exit 1"]
       interval: 20s
@@ -107,6 +132,11 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ── React Frontend ────────────────────────────────────────────────────────────
   frontend:
@@ -114,18 +144,30 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: forgevibe-frontend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ── Nginx Reverse Proxy ───────────────────────────────────────────────────────
   nginx:
     image: nginx:alpine
     container_name: forgevibe-nginx
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_healthy
     ports:
       - "3000:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres_data:

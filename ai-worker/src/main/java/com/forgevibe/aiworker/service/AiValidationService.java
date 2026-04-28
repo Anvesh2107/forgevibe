@@ -98,12 +98,58 @@ public class AiValidationService {
     }
 
     // ── Project deep analysis ────────────────────────────────────────────────────
-    public ProjectAnalysisResult analyzeProject(String title, String description, String stack) {
+    public ProjectAnalysisResult analyzeProject(String title, String description, String stack, String repoUrl) {
+        String githubContext = fetchGithubContext(repoUrl);
         String combined = title + " " + description + " " + (stack != null ? stack : "");
         if (openAiKey != null && !openAiKey.isBlank()) {
-            return analyzeProjectWithOpenAi(title, description, stack);
+            return analyzeProjectWithOpenAi(title, description, stack, githubContext);
         }
-        return mockAnalyzeProject(combined);
+        return mockAnalyzeProject(combined + " " + githubContext);
+    }
+
+    // ── Fetch GitHub repo info + README ──────────────────────────────────────────
+    private String fetchGithubContext(String repoUrl) {
+        if (repoUrl == null || !repoUrl.contains("github.com")) return "";
+        try {
+            // Extract owner/repo from URL (handles trailing .git or slashes)
+            String path = repoUrl.replaceFirst("https?://github\\.com/", "").replaceAll("\\.git$", "").replaceAll("/$", "");
+            String apiBase = "https://api.github.com/repos/" + path;
+
+            String repoJson = WebClient.builder().build()
+                    .get().uri(apiBase)
+                    .header("Accept", "application/vnd.github+json")
+                    .retrieve().bodyToMono(String.class)
+                    .onErrorReturn("{}").block();
+
+            JsonNode repo = mapper.readTree(repoJson != null ? repoJson : "{}");
+            String ghDesc = repo.path("description").asText("");
+            String language = repo.path("language").asText("");
+            int stars = repo.path("stargazers_count").asInt(0);
+            int forks = repo.path("forks_count").asInt(0);
+            String topics = repo.path("topics").toString();
+
+            // Fetch README (base64-encoded)
+            String readmeJson = WebClient.builder().build()
+                    .get().uri(apiBase + "/readme")
+                    .header("Accept", "application/vnd.github+json")
+                    .retrieve().bodyToMono(String.class)
+                    .onErrorReturn("{}").block();
+
+            String readmeText = "";
+            JsonNode readmeNode = mapper.readTree(readmeJson != null ? readmeJson : "{}");
+            String encoded = readmeNode.path("content").asText("");
+            if (!encoded.isBlank()) {
+                byte[] decoded = java.util.Base64.getMimeDecoder().decode(encoded);
+                readmeText = new String(decoded).substring(0, Math.min(3000, new String(decoded).length()));
+            }
+
+            return String.format(
+                "GitHub: description=%s, language=%s, stars=%d, forks=%d, topics=%s\nREADME:\n%s",
+                ghDesc, language, stars, forks, topics, readmeText);
+        } catch (Exception e) {
+            log.warn("[GitHub] Failed to fetch repo context for {}: {}", repoUrl, e.getMessage());
+            return "";
+        }
     }
 
     // ── Mock thought scoring ─────────────────────────────────────────────────────
@@ -171,15 +217,18 @@ public class AiValidationService {
                 You are a content moderation AI for ForgeVibe, a platform for software builders and tech enthusiasts.
                 Evaluate whether the submitted post belongs on a tech community feed.
 
-                APPROVE (score 65-100) if the post is:
+                APPROVE (score 55-100) if the post is:
                 - A technical insight, opinion, or take on software engineering, AI, or developer tools
                 - A discussion question about tech trends, architecture, or engineering tradeoffs
                 - A builder update, project launch, or dev experience story
                 - Commentary on AI tools, LLMs, agentic systems, or the future of software
+                - A question, hot take, or casual observation from a developer or builder
+                - Someone sharing a link, resource, or project they built or found useful
+                - Even loosely tech-related posts from the builder community are welcome
 
-                NEEDS CONTEXT (score 35-64) if the post is tech-adjacent but vague or lacks substance.
+                NEEDS CONTEXT (score 35-54) if the post is very vague with no tech signal at all.
 
-                BLOCK (score 0-34) only for clear spam, NSFW content, or completely off-topic posts.
+                BLOCK (score 0-34) only for clear spam, NSFW content, or completely off-topic posts (no tech connection whatsoever).
 
                 Respond with ONLY a JSON object:
                 {"confidence": <0-100>, "reason": "<short explanation>"}
@@ -188,7 +237,7 @@ public class AiValidationService {
             JsonNode result = parseJsonFromResponse(response);
             int confidence = result.path("confidence").asInt(65);
             String reason = result.path("reason").asText("No reason provided.");
-            String status = confidence >= 65 ? "published" : confidence >= 35 ? "needs_context" : "blocked";
+            String status = confidence >= 55 ? "published" : confidence >= 35 ? "needs_context" : "blocked";
             return new ValidationResult(confidence, status, reason);
         } catch (Exception e) {
             log.error("[OpenAI] Thought validation failed, falling back to mock: {}", e.getMessage());
@@ -197,26 +246,27 @@ public class AiValidationService {
     }
 
     // ── OpenAI project analysis ──────────────────────────────────────────────────
-    private ProjectAnalysisResult analyzeProjectWithOpenAi(String title, String description, String stack) {
+    private ProjectAnalysisResult analyzeProjectWithOpenAi(String title, String description, String stack, String githubContext) {
         try {
             String systemPrompt = """
                 You are a senior software engineer performing a repository analysis for ForgeVibe.
-                Given a project title, description, and tech stack, produce scores and narrative.
+                Given a project's metadata and GitHub README (when available), produce scores and narrative.
                 Respond with ONLY a JSON object (no markdown):
                 {
                   "architectureScore": <0-100>,
                   "securityScore": <0-100>,
                   "qualityScore": <0-100>,
                   "docsScore": <0-100>,
-                  "summary": "<2-3 sentence objective summary>",
-                  "vibeCheck": "<1 punchy sentence about the project vibe>",
+                  "summary": "<2-3 sentence objective summary of what the project does and its technical approach>",
+                  "vibeCheck": "<1 punchy sentence capturing the builder energy and project vibe>",
                   "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
                   "improvements": ["<improvement 1>", "<improvement 2>", "<improvement 3>"]
                 }
-                Base scores on what can be inferred from the description. Be fair and constructive.
+                Use the README and GitHub metadata to produce accurate, specific analysis. Be fair and constructive.
                 """;
             String userMsg = "Title: " + title + "\nDescription: " + description
-                    + "\nStack: " + (stack != null ? stack : "not specified");
+                    + "\nStack: " + (stack != null ? stack : "not specified")
+                    + (githubContext != null && !githubContext.isBlank() ? "\n\n" + githubContext : "");
             String response = callOpenAi(systemPrompt, userMsg, 600);
             JsonNode r = parseJsonFromResponse(response);
 

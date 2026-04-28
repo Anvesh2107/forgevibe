@@ -23,7 +23,7 @@ public class ProjectConsumer {
         log.info("[ProjectConsumer] Received projectId={}", event.getProjectId());
 
         AiValidationService.ProjectAnalysisResult result = aiService.analyzeProject(
-                event.getTitle(), event.getDescription(), event.getStack());
+                event.getTitle(), event.getDescription(), event.getStack(), event.getRepoUrl());
 
         ProjectAnalyzedEvent analyzed = ProjectAnalyzedEvent.builder()
                 .projectId(event.getProjectId())

@@ -77,7 +77,7 @@ function FeedTab() {
 
   // Unified feed (projects + thoughts interleaved)
   const { data: feedItems = [], isLoading: feedLoading } = useQuery<any[]>({
-    queryKey: ["/api/feed", { ...(feedTag !== "All" ? { tag: feedTag } : {}) }],
+    queryKey: feedTag !== "All" ? ["/api/feed", { tag: feedTag }] : ["/api/feed"],
     enabled: feedTab === "all",
   });
 

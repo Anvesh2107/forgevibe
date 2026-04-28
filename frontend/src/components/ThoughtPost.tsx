@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { Link } from "wouter";
-import { CheckCircle, AlertTriangle, XCircle, Flag, MoreHorizontal } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { CheckCircle, AlertTriangle, XCircle, Flag, MoreHorizontal, Share2, Twitter, Linkedin, Link2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -129,9 +130,44 @@ export default function ThoughtPost({ thought }: ThoughtPostProps) {
   const { toast } = useToast();
   const [local, setLocal] = useState(thought);
   const [showReport, setShowReport] = useState(false);
-  // Local (optimistic) comments — no backend comment API for thoughts yet
   const [localComments, setLocalComments] = useState<CommentData[]>([]);
   const [showAllComments, setShowAllComments] = useState(false);
+
+  const { data: apiComments = [], refetch: refetchComments } = useQuery<any[]>({
+    queryKey: [`/api/thoughts/${local.id}/comments`],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/thoughts/${local.id}/comments`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!local.id,
+  });
+
+  const apiBodySet = new Set(apiComments.map((c: any) => c.content));
+  const allFlat: CommentData[] = [
+    ...apiComments.map((c: any) => ({
+      id: c.id,
+      body: c.content,
+      createdAt: c.createdAt,
+      user: c.author,
+      replies: [],
+    })),
+    ...localComments.filter((lc: CommentData) => !apiBodySet.has(lc.body)),
+  ];
+
+  const threads: CommentData[] = [];
+  const byId: Record<string | number, CommentData> = {};
+  for (const c of allFlat) { byId[c.id] = { ...c, replies: [] }; }
+  for (const c of allFlat) {
+    const node = byId[c.id];
+    if (c.body.startsWith("__reply__:")) {
+      const [, parentIdStr, ...rest] = c.body.split(":");
+      node.body = rest.join(":");
+      const parent = byId[parseInt(parentIdStr)];
+      if (parent) { parent.replies = [...(parent.replies || []), node]; continue; }
+    }
+    threads.push(node);
+  }
 
   const timeAgo = (() => {
     try {
@@ -159,41 +195,33 @@ export default function ThoughtPost({ thought }: ThoughtPostProps) {
     "thought", local.id, local.hasLiked, local.likeCount ?? 0, likeToggle
   );
 
-  // Post top-level comment (optimistic only — no thought comment API)
   const handlePost = async (body: string) => {
     if (!user) { toast({ title: "Sign in to weigh in" }); return; }
-    const c: CommentData = {
-      id: `opt-${Date.now()}`,
-      body,
+    try {
+      await apiRequest("POST", `/api/thoughts/${local.id}/comments`, { content: body });
+      setLocal((p: any) => ({ ...p, commentCount: (p.commentCount || 0) + 1 }));
+      refetchComments();
+    } catch {}
+  };
+
+  const handleReply = async (parent: CommentData, body: string) => {
+    if (!user) { toast({ title: "Sign in to reply" }); return; }
+    const taggedBody = `@${parent.user?.username} ${body}`;
+    const optimisticId = `opt-${Date.now()}`;
+    setLocalComments(prev => [...prev, {
+      id: optimisticId,
+      body: `__reply__:${parent.id}:${taggedBody}`,
       createdAt: new Date().toISOString(),
       user: { username: user.username, avatarUrl: user.avatarUrl },
       replies: [],
-    };
-    setLocalComments(prev => [...prev, c]);
+    }]);
     setLocal((p: any) => ({ ...p, commentCount: (p.commentCount || 0) + 1 }));
+    try {
+      await apiRequest("POST", `/api/thoughts/${local.id}/comments`, { content: `__reply__:${parent.id}:${taggedBody}` });
+    } catch {}
   };
 
-  // Reply on a comment (1-level, tagged)
-  const handleReply = async (parent: CommentData, body: string) => {
-    if (!user) { toast({ title: "Sign in to reply" }); return; }
-    const tagged = `@${parent.user?.username} ${body}`;
-    // Find the parent and add reply
-    setLocalComments(prev => prev.map(c => {
-      if (c.id === parent.id) {
-        return { ...c, replies: [...(c.replies || []), {
-          id: `opt-${Date.now()}`,
-          body: tagged,
-          createdAt: new Date().toISOString(),
-          user: { username: user.username, avatarUrl: user.avatarUrl },
-          replies: [],
-        }] };
-      }
-      return c;
-    }));
-    setLocal((p: any) => ({ ...p, commentCount: (p.commentCount || 0) + 1 }));
-  };
-
-  const displayed = showAllComments ? localComments : localComments.slice(0, 2);
+  const displayed = showAllComments ? threads : threads.slice(0, 2);
   const isOwn = user && local.user?.username === user.username;
 
   return (
@@ -257,10 +285,10 @@ export default function ThoughtPost({ thought }: ThoughtPostProps) {
         </div>
 
         {/* ── Reaction summary bar ── */}
-        {(local.likeCount > 0 || localComments.length > 0) && (
+        {(local.likeCount > 0 || threads.length > 0) && (
           <div className="mx-4 mb-2 flex items-center gap-3 text-xs text-muted-foreground">
             {local.likeCount > 0 && <span>✅ {local.likeCount}</span>}
-            {localComments.length > 0 && <span>💬 {localComments.length}</span>}
+            {threads.length > 0 && <span>💬 {threads.length}</span>}
           </div>
         )}
 
@@ -274,6 +302,39 @@ export default function ThoughtPost({ thought }: ThoughtPostProps) {
             disabled={isReacting}
             testIdPrefix={`thought-${local.id}-`}
           />
+          <div className="flex-1 flex items-center justify-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all">
+                  <Share2 className="w-4 h-4" />
+                  Share
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem
+                  onClick={() => window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(local.content?.slice(0, 100) + "… " + window.location.origin)}`, "_blank")}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Twitter className="w-4 h-4" /> Share on X
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.origin)}`, "_blank")}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Linkedin className="w-4 h-4" /> Share on LinkedIn
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}`);
+                    toast({ title: "Link copied!" });
+                  }}
+                  className="gap-2 cursor-pointer"
+                >
+                  <Link2 className="w-4 h-4" /> Copy link
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {/* ── Comments section (always visible) ── */}
@@ -285,7 +346,7 @@ export default function ThoughtPost({ thought }: ThoughtPostProps) {
             onReply={handleReply}
             showAll={showAllComments}
             onShowAll={() => setShowAllComments(true)}
-            totalCount={localComments.length}
+            totalCount={threads.length}
           />
         </div>
       </div>

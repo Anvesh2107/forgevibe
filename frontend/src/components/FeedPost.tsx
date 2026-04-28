@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { Link } from "wouter";
-import { Star, Github, Share2, Twitter, Linkedin, Link2 } from "lucide-react";
+import { Star, Github, Globe, Share2, Twitter, Linkedin, Link2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -221,48 +221,58 @@ export default function FeedPost({ project, rank }: FeedPostProps) {
         )}
       </div>
 
-      {/* ── Cover Image (click → detail page) ── */}
-      <Link href={`/projects/${local.id}`}>
-        <div className="relative mx-4 rounded-xl overflow-hidden mb-3 cursor-pointer" style={{ aspectRatio: "16/7" }}>
-          {local.analysisStatus === "analyzing" && (
-            <div className="absolute inset-x-0 top-0 h-0.5 analyzing-gradient z-10" />
-          )}
-          {local.coverImageUrl ? (
+      {/* ── Cover image (only when one exists) ── */}
+      {local.coverImageUrl && (
+        <Link href={`/projects/${local.id}`}>
+          <div className="relative mx-4 rounded-xl overflow-hidden mb-3 cursor-pointer" style={{ aspectRatio: "16/7" }}>
+            {local.analysisStatus === "analyzing" && (
+              <div className="absolute inset-x-0 top-0 h-0.5 analyzing-gradient z-10" />
+            )}
             <img
               src={local.coverImageUrl}
               alt={local.name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                const t = e.target as HTMLImageElement;
-                t.style.display = "none";
-                if (t.nextElementSibling) (t.nextElementSibling as HTMLElement).style.display = "flex";
-              }}
+              className="w-full h-full object-cover hover:opacity-90 transition-opacity"
             />
-          ) : null}
-          <div
-            className="w-full h-full items-center justify-center hover:opacity-80 transition-opacity"
-            style={{ background: "linear-gradient(135deg, #0f1e3d 0%, #0B1628 50%, #071020 100%)", display: local.coverImageUrl ? "none" : "flex" }}
-          >
-            <span className="text-5xl opacity-20">⚡</span>
           </div>
-        </div>
-      </Link>
+        </Link>
+      )}
 
       {/* ── Project info ── */}
       <div className="px-4 mb-3">
-        <div className="flex items-start justify-between gap-2 mb-1.5">
+        {/* Title row */}
+        <div className="flex items-start justify-between gap-2 mb-1">
           <Link href={`/projects/${local.id}`}>
             <h2 className="font-bold text-base leading-tight hover:text-primary transition-colors cursor-pointer">
               {local.name}
             </h2>
           </Link>
-          <a href={local.githubUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5">
-            <Github className="w-4 h-4" />
-          </a>
+          {local.githubUrl && (
+            <a href={local.githubUrl} target="_blank" rel="noopener noreferrer"
+               className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5">
+              {local.githubUrl.includes("github.com") ? <Github className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
+            </a>
+          )}
         </div>
+
+        {/* AI vibe check — shown instead of image when no cover */}
+        {!local.coverImageUrl && local.analysis?.vibeCheck && (
+          <p className="text-xs italic text-primary/70 mb-2 leading-relaxed">
+            "{local.analysis.vibeCheck}"
+          </p>
+        )}
+        {!local.coverImageUrl && (local.analysisStatus === "pending" || local.analysisStatus === "analyzing") && (
+          <p className="text-xs text-muted-foreground/60 mb-2 flex items-center gap-1">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            AI analysis in progress…
+          </p>
+        )}
+
+        {/* Description */}
         <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-2">
           {local.description}
         </p>
+
+        {/* Tags */}
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {tags.slice(0, 4).map((tag: string) => (
@@ -387,11 +397,9 @@ export function FeedPostSkeleton() {
           <Skeleton className="h-3 w-24" />
         </div>
       </div>
-      <div className="mx-4 rounded-xl overflow-hidden mb-3">
-        <Skeleton className="w-full" style={{ aspectRatio: "16/7" }} />
-      </div>
       <div className="px-4 space-y-2 mb-3">
         <Skeleton className="h-5 w-48" />
+        <Skeleton className="h-3 w-40" />
         <Skeleton className="h-3.5 w-full" />
         <Skeleton className="h-3.5 w-3/4" />
       </div>

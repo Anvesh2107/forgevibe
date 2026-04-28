@@ -23,7 +23,8 @@ public class KafkaConsumerService {
     private final ProjectRepository projectRepository;
     private final NotificationService notificationService;
 
-    @KafkaListener(topics = KafkaTopics.THOUGHT_REVIEWED, groupId = "forgevibe-backend")
+    @KafkaListener(topics = KafkaTopics.THOUGHT_REVIEWED, groupId = "forgevibe-backend",
+                   containerFactory = "thoughtReviewedListenerFactory")
     public void onThoughtReviewed(ThoughtReviewedEvent event) {
         log.info("Received thought.reviewed for thoughtId={} status={}", event.getThoughtId(), event.getStatus());
         thoughtPostRepository.findById(event.getThoughtId()).ifPresent(post -> {
@@ -40,7 +41,8 @@ public class KafkaConsumerService {
         });
     }
 
-    @KafkaListener(topics = KafkaTopics.PROJECT_ANALYZED, groupId = "forgevibe-backend")
+    @KafkaListener(topics = KafkaTopics.PROJECT_ANALYZED, groupId = "forgevibe-backend",
+                   containerFactory = "projectAnalyzedListenerFactory")
     public void onProjectAnalyzed(ProjectAnalyzedEvent event) {
         log.info("Received project.analyzed for projectId={} aiScore={}", event.getProjectId(), event.getAiScore());
         projectRepository.findById(event.getProjectId()).ifPresent(project -> {

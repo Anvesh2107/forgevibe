@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { ExternalLink, Heart, MessageSquare, Star, Github, Cpu, Shield, Code2, BookOpen, AlertTriangle } from "lucide-react";
+import { ExternalLink, Heart, MessageSquare, Star, Github, Globe, Cpu, Shield, Code2, BookOpen, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -52,8 +52,10 @@ export default function ProjectDetailPage() {
       return res.json();
     },
     // Poll every 4 s while AI analysis is still running
-    refetchInterval: (data: any) =>
-      data && (data.analysisStatus === "pending" || data.analysisStatus === "analyzing") ? 4000 : false,
+    refetchInterval: (query: any) => {
+      const d = query.state.data;
+      return d && (d.analysisStatus === "pending" || d.analysisStatus === "analyzing") ? 4000 : false;
+    },
   });
 
   const { data: comments = [], refetch: refetchComments } = useQuery<any[]>({
@@ -133,7 +135,15 @@ export default function ProjectDetailPage() {
           </div>
 
           {/* AI Analysis */}
-          {project.analysisStatus === "pending" || project.analysisStatus === "analyzing" ? (
+          {project.analysisStatus === "live" ? (
+            <div className="rounded-xl border border-card-border bg-card/50 p-4 flex items-center gap-3">
+              <Globe className="w-5 h-5 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-sm font-medium">Live Project</p>
+                <p className="text-xs text-muted-foreground">AI code analysis is available for GitHub repos.</p>
+              </div>
+            </div>
+          ) : project.analysisStatus === "pending" || project.analysisStatus === "analyzing" ? (
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full analyzing-gradient analyzing-icon-glow flex items-center justify-center shrink-0 text-base">

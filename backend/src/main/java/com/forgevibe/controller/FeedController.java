@@ -27,9 +27,10 @@ public class FeedController {
     @GetMapping
     public ResponseEntity<List<FeedItemResponse>> getFeed(
             @RequestParam(defaultValue = "all") String filter,
+            @RequestParam(required = false) String tag,
             HttpSession session) {
         Long userId = sessionUser.getUserId(session);
         User viewer = userId != null ? userService.getById(userId) : null;
-        return ResponseEntity.ok(feedService.getFeed(filter, viewer));
+        return ResponseEntity.ok(feedService.getFeed(filter, tag, viewer));
     }
 }

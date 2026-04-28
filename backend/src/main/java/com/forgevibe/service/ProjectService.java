@@ -34,6 +34,8 @@ public class ProjectService {
     private final NotificationService notificationService;
 
     public ProjectResponse submit(ProjectRequest req, User author) {
+        boolean isGithub = req.getRepoUrl() != null && req.getRepoUrl().contains("github.com");
+
         Project project = Project.builder()
                 .title(req.getTitle())
                 .description(req.getDescription())
@@ -44,16 +46,20 @@ public class ProjectService {
                 .aiScore(0)
                 .stars(0)
                 .diamonds(0)
+                .analysisStatus(isGithub ? "pending" : "live")
                 .build();
         projectRepo.save(project);
 
-        kafka.sendProjectSubmitted(ProjectSubmittedEvent.builder()
-                .projectId(project.getId())
-                .userId(author.getId())
-                .title(project.getTitle())
-                .description(project.getDescription())
-                .stack(project.getStack())
-                .build());
+        if (isGithub) {
+            kafka.sendProjectSubmitted(ProjectSubmittedEvent.builder()
+                    .projectId(project.getId())
+                    .userId(author.getId())
+                    .title(project.getTitle())
+                    .description(project.getDescription())
+                    .stack(project.getStack())
+                    .repoUrl(project.getRepoUrl())
+                    .build());
+        }
 
         return toResponse(project, author);
     }
@@ -181,6 +187,24 @@ public class ProjectService {
             }
         }
         return toResponse(project, user);
+    }
+
+    public ProjectResponse retriggerAnalysis(Long projectId, User viewer) {
+        Project project = projectRepo.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+        boolean isGithub = project.getRepoUrl() != null && project.getRepoUrl().contains("github.com");
+        if (!isGithub) throw new RuntimeException("Not a GitHub project");
+        project.setAnalysisStatus("pending");
+        projectRepo.save(project);
+        kafka.sendProjectSubmitted(ProjectSubmittedEvent.builder()
+                .projectId(project.getId())
+                .userId(project.getAuthor().getId())
+                .title(project.getTitle())
+                .description(project.getDescription())
+                .stack(project.getStack())
+                .repoUrl(project.getRepoUrl())
+                .build());
+        return toResponse(project, viewer);
     }
 
     public ProjectResponse toResponse(Project project, User viewer) {
