@@ -31,6 +31,13 @@ public class Space {
     private User owner;
 
     @Builder.Default
+    @Column(name = "is_paid")
+    private boolean isPaid = false;
+
+    @Column(name = "price_monthly")
+    private Double priceMonthly;
+
+    @Builder.Default
     private Integer memberCount = 1;
 
     @Builder.Default

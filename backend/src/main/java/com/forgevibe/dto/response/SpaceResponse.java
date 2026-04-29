@@ -16,4 +16,6 @@ public class SpaceResponse {
     private LocalDateTime createdAt;
     private boolean member;
     private boolean spaceOwner;
+    private boolean isPaid;
+    private Double priceMonthly;
 }

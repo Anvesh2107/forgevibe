@@ -33,8 +33,17 @@ public class SpaceService {
 
     @org.springframework.transaction.annotation.Transactional
     public SpaceResponse createSpace(SpaceRequest req, User owner) {
+        if (spaceRepo.countByOwnerId(owner.getId()) >= 5) {
+            throw new RuntimeException("Cannot create more than 5 spaces");
+        }
         String emoji = req.getEmoji() != null && !req.getEmoji().isBlank() ? req.getEmoji() : "🚀";
+        boolean paid = req.isPaid();
+        Double price = paid && req.getPriceMonthly() != null && req.getPriceMonthly() > 0
+                ? req.getPriceMonthly() : null;
+        if (paid && price == null) paid = false; // can't be paid without a price
 
+        boolean finalPaid = paid;
+        Double finalPrice = price;
         Space space = null;
         for (int attempt = 0; attempt < 5; attempt++) {
             try {
@@ -45,11 +54,16 @@ public class SpaceService {
                         .description(req.getDescription())
                         .emoji(emoji)
                         .owner(owner)
+                        .isPaid(finalPaid)
+                        .priceMonthly(finalPrice)
                         .memberCount(1)
                         .postCount(0)
                         .build());
                 break;
             } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+                // Only retry for slug uniqueness violations — rethrow everything else immediately
+                if (!msg.contains("slug")) throw e;
                 if (attempt == 4) throw e;
             }
         }
@@ -152,6 +166,11 @@ public class SpaceService {
         return toPostResponse(post, user);
     }
 
+    public List<SpaceResponse> getByOwnerId(Long ownerId, User viewer) {
+        return spaceRepo.findByOwnerIdOrderByCreatedAtDesc(ownerId)
+                .stream().map(s -> toResponse(s, viewer)).toList();
+    }
+
     public SpaceResponse toResponse(Space space, User viewer) {
         boolean isMember = viewer != null && memberRepo.existsBySpaceIdAndUserId(space.getId(), viewer.getId());
         boolean isOwner = viewer != null && space.getOwner().getId().equals(viewer.getId());
@@ -167,6 +186,8 @@ public class SpaceService {
                 .createdAt(space.getCreatedAt())
                 .member(isMember)
                 .spaceOwner(isOwner)
+                .isPaid(space.isPaid())
+                .priceMonthly(space.getPriceMonthly())
                 .build();
     }
 

@@ -7,6 +7,8 @@ import java.util.Optional;
 
 public interface SpaceRepository extends JpaRepository<Space, Long> {
     List<Space> findAllByOrderByMemberCountDesc();
+    List<Space> findByOwnerIdOrderByCreatedAtDesc(Long ownerId);
+    long countByOwnerId(Long ownerId);
     Optional<Space> findBySlug(String slug);
     boolean existsBySlug(String slug);
 }

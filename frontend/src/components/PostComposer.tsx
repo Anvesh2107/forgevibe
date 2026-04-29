@@ -90,8 +90,8 @@ export default function PostComposer({ onPosted }: { onPosted?: () => void }) {
       // Poll until the worker sets a final status (max 15s).
       let finalData = initial;
       if (initial.status === "pending" && initial.id) {
-        for (let i = 0; i < 15; i++) {
-          await new Promise(r => setTimeout(r, 1000));
+        for (const delay of [1000, 1500, 2000, 2500, 3000, 4000, 5000]) {
+          await new Promise(r => setTimeout(r, delay));
           try {
             const poll = await apiRequest("GET", `/api/thoughts/${initial.id}`);
             if (poll.ok) {
@@ -359,13 +359,13 @@ export default function PostComposer({ onPosted }: { onPosted?: () => void }) {
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm">Your idea or insight</Label>
-                      <span className="text-xs text-muted-foreground font-mono">{ideaText.length}/500</span>
+                      <span className="text-xs text-muted-foreground font-mono">{ideaText.length}/2000</span>
                     </div>
                     <Textarea
                       placeholder="e.g. Why I think monoliths are making a comeback, or what I learned building a distributed cache..."
                       rows={5}
                       value={ideaText}
-                      onChange={e => setIdeaText(e.target.value.substring(0, 500))}
+                      onChange={e => setIdeaText(e.target.value.substring(0, 2000))}
                       data-testid="composer-thought"
                     />
                   </div>

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Heart, MessageSquare, Send, ChevronLeft, Loader2 } from "lucide-react";
+import { Users, Heart, MessageSquare, Send, ChevronLeft, Loader2, CheckCircle, CreditCard, Lock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -249,7 +249,7 @@ export default function SpaceDetailPage() {
               <span>by {space.owner?.username}</span>
             </div>
           </div>
-          {!space.spaceOwner && (
+          {!space.spaceOwner && !(space.isPaid && !space.member) && (
             <Button
               size="sm"
               variant={space.member ? "outline" : "default"}
@@ -259,6 +259,13 @@ export default function SpaceDetailPage() {
             >
               {isActing ? <Loader2 className="w-4 h-4 animate-spin" /> : space.member ? "Leave" : "Join Space"}
             </Button>
+          )}
+          {space.isPaid && !space.member && !space.spaceOwner && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Lock className="w-3.5 h-3.5 text-primary" />
+              <span className="text-base font-bold text-primary">${space.priceMonthly}</span>
+              <span className="text-xs text-muted-foreground">/mo</span>
+            </div>
           )}
           {space.spaceOwner && (
             <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium shrink-0">
@@ -292,6 +299,64 @@ export default function SpaceDetailPage() {
               </div>
             </div>
           </div>
+        </div>
+      ) : space.isPaid ? (
+        /* ── Payment gateway for paid spaces ── */
+        <div className="rounded-2xl border border-primary/20 bg-card card-elevated p-6 mb-5">
+          <div className="text-center mb-6">
+            <div className="text-5xl mb-3">{space.emoji}</div>
+            <h2 className="text-lg font-bold">{space.name}</h2>
+            <p className="text-xs text-muted-foreground mt-1 uppercase tracking-wide font-medium">Premium Space</p>
+            <div className="mt-3 flex items-baseline justify-center gap-1">
+              <span className="text-4xl font-bold">${space.priceMonthly}</span>
+              <span className="text-muted-foreground text-sm">/month</span>
+            </div>
+          </div>
+
+          <div className="space-y-2.5 mb-6">
+            {[
+              "Full access to all posts and discussions",
+              "Direct interaction with the creator",
+              "Exclusive content and project updates",
+              "Grandfathered pricing when paid access launches",
+            ].map(feature => (
+              <div key={feature} className="flex items-center gap-2.5 text-sm">
+                <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
+                <span>{feature}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Grayed-out payment form — visual only */}
+          <div className="space-y-2.5 mb-5 opacity-35 select-none pointer-events-none">
+            <div className="flex items-center gap-2 mb-1">
+              <CreditCard className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground font-medium">Payment Details</span>
+            </div>
+            <input
+              readOnly
+              placeholder="•••• •••• •••• ••••"
+              className="w-full bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60"
+            />
+            <div className="flex gap-3">
+              <input readOnly placeholder="MM / YY" className="flex-1 bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60" />
+              <input readOnly placeholder="CVC" className="flex-1 bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60" />
+            </div>
+          </div>
+
+          {/* Beta notice */}
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 mb-4 text-center">
+            <p className="text-xs text-amber-400 leading-relaxed">
+              <span className="font-semibold">Payment processing coming soon!</span> We're still setting up our payment system — no card required yet. Click below to join for free during beta. Early members get grandfathered pricing when subscriptions launch.
+            </p>
+          </div>
+
+          <Button className="w-full" size="lg" onClick={handleJoinLeave} disabled={isActing}>
+            {isActing
+              ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              : <Heart className="w-4 h-4 mr-2" />}
+            I'm Interested — Join Free During Beta
+          </Button>
         </div>
       ) : (
         <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 mb-5 text-center text-sm text-muted-foreground">

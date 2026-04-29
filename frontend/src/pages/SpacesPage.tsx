@@ -42,24 +42,37 @@ function SpaceCard({ space, onJoin, onLeave, isActing }: {
         )}
 
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">by {space.owner?.username}</span>
-          <button
-            onClick={e => {
-              e.preventDefault();
-              space.member ? onLeave(space.id) : onJoin(space.id);
-            }}
-            disabled={isActing || space.spaceOwner}
-            className={cn(
-              "text-xs px-3 py-1 rounded-full border font-medium transition-all",
-              space.spaceOwner
-                ? "border-border text-muted-foreground cursor-default"
-                : space.member
-                ? "border-border text-muted-foreground hover:border-destructive/40 hover:text-destructive"
-                : "border-primary/40 text-primary bg-primary/5 hover:bg-primary/10"
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">by {space.owner?.username}</span>
+            {space.isPaid && (
+              <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
+                💎 ${space.priceMonthly}/mo
+              </span>
             )}
-          >
-            {space.spaceOwner ? "Owner" : space.member ? "Leave" : "Join"}
-          </button>
+          </div>
+          {space.isPaid && !space.member && !space.spaceOwner ? (
+            <span className="text-xs px-3 py-1 rounded-full border border-primary/40 text-primary font-medium">
+              View Plans
+            </span>
+          ) : (
+            <button
+              onClick={e => {
+                e.preventDefault();
+                space.member ? onLeave(space.id) : onJoin(space.id);
+              }}
+              disabled={isActing || space.spaceOwner}
+              className={cn(
+                "text-xs px-3 py-1 rounded-full border font-medium transition-all",
+                space.spaceOwner
+                  ? "border-border text-muted-foreground cursor-default"
+                  : space.member
+                  ? "border-border text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+                  : "border-primary/40 text-primary bg-primary/5 hover:bg-primary/10"
+              )}
+            >
+              {space.spaceOwner ? "Owner" : space.member ? "Leave" : "Join"}
+            </button>
+          )}
         </div>
       </div>
     </Link>
@@ -75,6 +88,8 @@ export default function SpacesPage() {
   const [emoji, setEmoji] = useState("🚀");
   const [isCreating, setIsCreating] = useState(false);
   const [actingId, setActingId] = useState<number | null>(null);
+  const [isPaid, setIsPaid] = useState(false);
+  const [priceMonthly, setPriceMonthly] = useState("");
 
   const { data: spaces = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/spaces"],
@@ -85,11 +100,23 @@ export default function SpacesPage() {
     if (!name.trim()) { toast({ title: "Name is required" }); return; }
     setIsCreating(true);
     try {
-      await apiRequest("POST", "/api/spaces", { name: name.trim(), description: description.trim(), emoji });
+      const res = await apiRequest("POST", "/api/spaces", {
+        name: name.trim(),
+        description: description.trim(),
+        emoji,
+        isPaid,
+        priceMonthly: isPaid && priceMonthly ? parseFloat(priceMonthly) : null,
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast({ title: err.error || "Something went wrong", variant: "destructive" });
+        setIsCreating(false);
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/spaces"] });
       setShowCreate(false);
-      setName(""); setDescription(""); setEmoji("🚀");
-      toast({ title: "Space created!" });
+      setName(""); setDescription(""); setEmoji("🚀"); setIsPaid(false); setPriceMonthly("");
+      toast({ title: isPaid ? "Paid space created!" : "Space created!" });
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
     }
@@ -163,6 +190,49 @@ export default function SpacesPage() {
                   >{e}</button>
                 ))}
               </div>
+            </div>
+
+            {/* Free / Paid toggle */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-2">Access</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setIsPaid(false); setPriceMonthly(""); }}
+                  className={cn(
+                    "flex-1 py-2 rounded-lg border text-sm font-medium transition-all",
+                    !isPaid ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/30"
+                  )}
+                >
+                  Free
+                </button>
+                <button
+                  onClick={() => setIsPaid(true)}
+                  className={cn(
+                    "flex-1 py-2 rounded-lg border text-sm font-medium transition-all",
+                    isPaid ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/30"
+                  )}
+                >
+                  💎 Paid
+                </button>
+              </div>
+              {isPaid && (
+                <div className="mt-2">
+                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">Monthly Price (USD)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="999"
+                      step="1"
+                      value={priceMonthly}
+                      onChange={e => setPriceMonthly(e.target.value)}
+                      placeholder="e.g. 9"
+                      className="w-full pl-7 bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>

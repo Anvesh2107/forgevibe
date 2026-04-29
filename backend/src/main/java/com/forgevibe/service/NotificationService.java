@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.util.List;
 import java.util.Map;
 
@@ -16,6 +18,7 @@ import java.util.Map;
 public class NotificationService {
 
     private final NotificationRepository notificationRepo;
+    private final ObjectMapper objectMapper;
 
     public void create(User recipient, String type, Map<String, Object> payload) {
         if (recipient == null) return;
@@ -40,17 +43,7 @@ public class NotificationService {
     }
 
     private String buildJson(Map<String, Object> map) {
-        if (map == null || map.isEmpty()) return "{}";
-        StringBuilder sb = new StringBuilder("{");
-        map.forEach((k, v) -> {
-            if (sb.length() > 1) sb.append(",");
-            sb.append("\"").append(k).append("\":");
-            if (v == null) sb.append("null");
-            else if (v instanceof Number) sb.append(v);
-            else if (v instanceof Boolean) sb.append(v);
-            else sb.append("\"").append(v.toString().replace("\"", "\\\"")).append("\"");
-        });
-        sb.append("}");
-        return sb.toString();
+        try { return objectMapper.writeValueAsString(map != null ? map : java.util.Map.of()); }
+        catch (Exception e) { return "{}"; }
     }
 }

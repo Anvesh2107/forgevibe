@@ -11,6 +11,7 @@ import com.forgevibe.service.CommentService;
 import com.forgevibe.service.SpaceService;
 import com.forgevibe.service.UserService;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -44,7 +45,7 @@ public class SpaceController {
 
     /** POST /api/spaces */
     @PostMapping
-    public ResponseEntity<SpaceResponse> create(@RequestBody SpaceRequest req, HttpSession session) {
+    public ResponseEntity<SpaceResponse> create(@Valid @RequestBody SpaceRequest req, HttpSession session) {
         return ResponseEntity.ok(spaceService.createSpace(req, requireUser(session)));
     }
 

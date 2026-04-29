@@ -10,6 +10,8 @@ import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
+import org.springframework.dao.DataIntegrityViolationException;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -52,7 +54,13 @@ public class GitHubOAuth2UserService extends DefaultOAuth2UserService {
             user.setPublicRepoCount(publicRepos);
             user.setFollowerCount(followers);
         }
-        user = userRepository.save(user);
+        try {
+            user = userRepository.save(user);
+        } catch (DataIntegrityViolationException e) {
+            // Username taken by a demo seed user — append GitHub ID suffix to guarantee uniqueness
+            user.setUsername(login + "_" + githubId.substring(0, 4));
+            user = userRepository.save(user);
+        }
 
         Map<String, Object> enriched = new HashMap<>(attrs);
         enriched.put("dbId", user.getId());

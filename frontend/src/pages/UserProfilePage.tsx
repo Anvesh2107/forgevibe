@@ -41,6 +41,16 @@ export default function UserProfilePage() {
     enabled: !!user,
   });
 
+  const { data: userSpaces = [] } = useQuery<any[]>({
+    queryKey: [`/api/users/${username}/spaces`],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/users/${username}/spaces`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
   if (userLoading) return (
     <div className="max-w-2xl mx-auto space-y-6 px-4 py-8">
       <div className="flex items-start gap-4">
@@ -162,6 +172,9 @@ export default function UserProfilePage() {
             <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
             Thoughts <span className="ml-1.5 text-xs text-muted-foreground">({userThoughts.length})</span>
           </TabsTrigger>
+          <TabsTrigger value="spaces">
+            Spaces <span className="ml-1.5 text-xs text-muted-foreground">({userSpaces.length})</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="projects">
@@ -218,6 +231,48 @@ export default function UserProfilePage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </TabsContent>
+        <TabsContent value="spaces">
+          {userSpaces.length === 0 ? (
+            <div className="rounded-2xl border border-card-border bg-card p-12 text-center">
+              <div className="text-3xl mb-2">🌐</div>
+              <p className="text-sm font-medium">No spaces yet</p>
+              <p className="text-xs text-muted-foreground mt-1">{displayName} hasn't created any spaces.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {userSpaces.map((s: any) => (
+                <Link key={s.id} href={`/spaces/${s.id}`}>
+                  <div className="rounded-2xl border border-card-border bg-card card-elevated p-4 hover:border-primary/30 transition-all cursor-pointer group">
+                    <div className="flex items-start gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-xl shrink-0">
+                        {s.emoji}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-sm group-hover:text-primary transition-colors truncate">{s.name}</h3>
+                          {s.isPaid && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium shrink-0">
+                              💎 ${s.priceMonthly}/mo
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                          <Users className="w-3 h-3" />
+                          <span>{s.memberCount} {s.memberCount === 1 ? "member" : "members"}</span>
+                          <span>·</span>
+                          <span>{s.postCount} posts</span>
+                        </div>
+                      </div>
+                    </div>
+                    {s.description && (
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{s.description}</p>
+                    )}
+                  </div>
+                </Link>
+              ))}
             </div>
           )}
         </TabsContent>
