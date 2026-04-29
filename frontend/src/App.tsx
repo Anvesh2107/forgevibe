@@ -14,6 +14,8 @@ import ThoughtsPage from "@/pages/ThoughtsPage";
 import UserProfilePage from "@/pages/UserProfilePage";
 import NotificationsPage from "@/pages/NotificationsPage";
 import AdminPage from "@/pages/AdminPage";
+import SpacesPage from "@/pages/SpacesPage";
+import SpaceDetailPage from "@/pages/SpaceDetailPage";
 import NotFoundPage from "@/pages/not-found";
 
 class RouteErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -48,6 +50,8 @@ function Routes() {
         <Route path="/users/:username" component={UserProfilePage} />
         <Route path="/profile/:username" component={UserProfilePage} />
         <Route path="/notifications" component={NotificationsPage} />
+        <Route path="/spaces" component={SpacesPage} />
+        <Route path="/spaces/:id" component={SpaceDetailPage} />
         <Route path="/admin" component={AdminPage} />
         <Route component={NotFoundPage} />
       </Switch>

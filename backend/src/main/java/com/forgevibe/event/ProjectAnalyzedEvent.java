@@ -1,6 +1,7 @@
 package com.forgevibe.event;
 
 import lombok.*;
+import java.util.List;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ProjectAnalyzedEvent {
@@ -15,4 +16,5 @@ public class ProjectAnalyzedEvent {
     private String vibeCheck;
     private String strengths;    // JSON array string
     private String improvements; // JSON array string
+    private List<String> detectedTags;
 }

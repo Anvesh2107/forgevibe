@@ -189,6 +189,24 @@ public class ProjectService {
         return toResponse(project, user);
     }
 
+    public ProjectResponse updateTags(Long projectId, List<String> tags, User user) {
+        Project project = projectRepo.findById(projectId)
+            .orElseThrow(() -> new RuntimeException("Project not found"));
+        if (!project.getAuthor().getId().equals(user.getId())) {
+            throw new RuntimeException("UNAUTHORIZED");
+        }
+        List<String> VALID_TAGS = List.of(
+            "Java", "Python", "JavaScript", "TypeScript", "React", "Spring Boot",
+            "Node.js", "AI/ML", "DevOps", "Security", "Open Source", "Mobile",
+            "Web3", "Data Engineering", "Infrastructure"
+        );
+        List<String> validTags = tags == null ? List.of() : tags.stream()
+            .filter(VALID_TAGS::contains).distinct().limit(6).collect(java.util.stream.Collectors.toList());
+        project.setStack(String.join(", ", validTags));
+        projectRepo.save(project);
+        return toResponse(project, user);
+    }
+
     public ProjectResponse retriggerAnalysis(Long projectId, User viewer) {
         Project project = projectRepo.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));

@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { Bell, Trophy, Zap, PlusCircle, MessageSquare, User, ChevronDown, LogOut, Menu, X, Sun, Moon, RefreshCw } from "lucide-react";
+import { Bell, Trophy, Zap, PlusCircle, MessageSquare, User, ChevronDown, LogOut, Menu, X, Sun, Moon, RefreshCw, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -57,6 +57,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     { href: "/", label: "Trending", icon: Zap },
     { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
     { href: "/thoughts", label: "Thoughts", icon: MessageSquare },
+    { href: "/spaces", label: "Spaces", icon: Layers },
   ];
 
   return (

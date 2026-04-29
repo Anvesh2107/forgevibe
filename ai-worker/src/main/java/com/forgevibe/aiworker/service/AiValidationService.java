@@ -86,7 +86,8 @@ public class AiValidationService {
             String strengths,    // JSON array string
             String improvements, // JSON array string
             int confidence,
-            String status
+            String status,
+            List<String> detectedTags
     ) {}
 
     // ── Thought validation ───────────────────────────────────────────────────────
@@ -204,11 +205,65 @@ public class AiValidationService {
         String strengths = "[\"Clear project scope\",\"Uses modern tech stack\",\"Active development\"]";
         String improvements = "[\"Add more documentation\",\"Consider adding tests\",\"Improve README setup guide\"]";
 
+        List<String> detectedTags = detectTagsFromContent(combined);
+
         return new ProjectAnalysisResult(arch, sec, qual, docs, summary, vibeCheck,
-                strengths, improvements, overall, status);
+                strengths, improvements, overall, status, detectedTags);
     }
 
     private int clamp(int v) { return Math.max(20, Math.min(98, v)); }
+
+    // ── Tag detection from combined text ────────────────────────────────────────
+    List<String> detectTagsFromContent(String combined) {
+        String lower = combined.toLowerCase();
+        List<String> tags = new ArrayList<>();
+
+        if (containsAny(lower, "java", "spring")) tags.add("Java");
+        if (containsAny(lower, "python", "django", "flask", "fastapi")) tags.add("Python");
+        if (containsAny(lower, "javascript", " js ")) tags.add("JavaScript");
+        if (containsAny(lower, "typescript")) tags.add("TypeScript");
+        if (containsAny(lower, "react", "next.js", "nextjs")) tags.add("React");
+        if (containsAny(lower, "spring boot", "springboot", "spring-boot")) tags.add("Spring Boot");
+        if (containsAny(lower, "node.js", "nodejs", "express", "nestjs")) tags.add("Node.js");
+        if (containsAny(lower, "machine learning", "deep learning", " ai ", "llm", "neural",
+                "tensorflow", "pytorch", "langchain")) tags.add("AI/ML");
+        if (containsAny(lower, "devops", "docker", "kubernetes", "ci/cd", "jenkins",
+                "ansible", "terraform")) tags.add("DevOps");
+        if (containsAny(lower, "security", "oauth", "jwt", "encryption",
+                "vulnerability", "penetration")) tags.add("Security");
+        if (containsAny(lower, "open source", "opensource")) tags.add("Open Source");
+        if (containsAny(lower, "mobile", "android", "ios", "flutter", "react native")) tags.add("Mobile");
+        if (containsAny(lower, "web3", "blockchain", "ethereum", "solidity", "nft", "crypto")) tags.add("Web3");
+        if (containsAny(lower, "data engineering", "etl", "data pipeline", "spark", "flink",
+                "data lake", "data warehouse")) tags.add("Data Engineering");
+        if (containsAny(lower, "infrastructure", "aws", "gcp", "azure", "cloud",
+                "linux", "nginx", "load balance")) tags.add("Infrastructure");
+
+        return tags;
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        for (String kw : keywords) {
+            if (text.contains(kw)) return true;
+        }
+        return false;
+    }
+
+    private List<String> parseDetectedTags(JsonNode r, String title, String description, String stack) {
+        try {
+            JsonNode tagsNode = r.path("detectedTags");
+            if (!tagsNode.isMissingNode() && tagsNode.isArray()) {
+                List<String> tags = new ArrayList<>();
+                for (JsonNode t : tagsNode) {
+                    tags.add(t.asText());
+                }
+                return tags;
+            }
+        } catch (Exception te) {
+            log.warn("[OpenAI] Failed to parse detectedTags, falling back to content detection: {}", te.getMessage());
+        }
+        return detectTagsFromContent(title + " " + description + " " + (stack != null ? stack : ""));
+    }
 
     // ── OpenAI thought validation ────────────────────────────────────────────────
     private ValidationResult validateThoughtWithOpenAi(String content) {
@@ -260,7 +315,8 @@ public class AiValidationService {
                   "summary": "<2-3 sentence objective summary of what the project does and its technical approach>",
                   "vibeCheck": "<1 punchy sentence capturing the builder energy and project vibe>",
                   "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
-                  "improvements": ["<improvement 1>", "<improvement 2>", "<improvement 3>"]
+                  "improvements": ["<improvement 1>", "<improvement 2>", "<improvement 3>"],
+                  "detectedTags": ["<pick from: Java, Python, JavaScript, TypeScript, React, Spring Boot, Node.js, AI/ML, DevOps, Security, Open Source, Mobile, Web3, Data Engineering, Infrastructure — only include what clearly applies>"]
                 }
                 Use the README and GitHub metadata to produce accurate, specific analysis. Be fair and constructive.
                 """;
@@ -281,12 +337,15 @@ public class AiValidationService {
             String strengthsJson = mapper.writeValueAsString(r.path("strengths"));
             String improvementsJson = mapper.writeValueAsString(r.path("improvements"));
 
+            // Parse detectedTags from AI response, fall back to content-based detection on failure
+            final List<String> detectedTags = parseDetectedTags(r, title, description, stack);
+
             return new ProjectAnalysisResult(
                     arch, sec, qual, docs,
                     r.path("summary").asText(""),
                     r.path("vibeCheck").asText(""),
                     strengthsJson, improvementsJson,
-                    overall, status);
+                    overall, status, detectedTags);
         } catch (Exception e) {
             log.error("[OpenAI] Project analysis failed, falling back to mock: {}", e.getMessage());
             return mockAnalyzeProject(title + " " + description + " " + stack);

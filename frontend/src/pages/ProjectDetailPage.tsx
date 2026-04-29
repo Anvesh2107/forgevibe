@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { ExternalLink, Heart, MessageSquare, Star, Github, Globe, Cpu, Shield, Code2, BookOpen, AlertTriangle } from "lucide-react";
+import { ExternalLink, Heart, MessageSquare, Star, Github, Globe, Cpu, Shield, Code2, BookOpen, AlertTriangle, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -43,6 +43,13 @@ export default function ProjectDetailPage() {
   const [comment, setComment] = useState("");
   const [isCommenting, setIsCommenting] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
+  const [editingTags, setEditingTags] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [isSavingTags, setIsSavingTags] = useState(false);
+
+  const KNOWN_TAGS = ["Java", "Python", "JavaScript", "TypeScript", "React", "Spring Boot",
+    "Node.js", "AI/ML", "DevOps", "Security", "Open Source", "Mobile",
+    "Web3", "Data Engineering", "Infrastructure"];
 
   const { data: project, isLoading, refetch } = useQuery<any>({
     queryKey: [`/api/projects/${id}`],
@@ -81,6 +88,16 @@ export default function ProjectDetailPage() {
   const diamondGivers: any[] = Array.isArray(project.diamondGivers) ? project.diamondGivers : [];
   const strengths = (() => { try { return JSON.parse(analysis?.strengths || "[]"); } catch { return []; } })();
   const improvements = (() => { try { return JSON.parse(analysis?.improvements || "[]"); } catch { return []; } })();
+
+  const isOwner = user && project && project.user?.username === user.username;
+
+  const handleSaveTags = async () => {
+    setIsSavingTags(true);
+    await apiRequest("PATCH", `/api/projects/${id}/tags`, { tags: selectedTags });
+    refetch();
+    setEditingTags(false);
+    setIsSavingTags(false);
+  };
 
   const handleLike = async () => {
     if (!user) { toast({ title: "Sign in to like" }); return; }
@@ -124,9 +141,53 @@ export default function ProjectDetailPage() {
             <p className="text-muted-foreground text-sm leading-relaxed">{project.description}</p>
 
             <div className="flex flex-wrap gap-2 mt-3">
-              {tags.map((tag: string) => (
-                <span key={tag} className="tag-pill text-xs px-2.5 py-1 rounded-lg border bg-muted text-muted-foreground">{tag}</span>
-              ))}
+              {!editingTags ? (
+                <>
+                  {tags.map((tag: string) => (
+                    <span key={tag} className="tag-pill text-xs px-2.5 py-1 rounded-lg border bg-muted text-muted-foreground">{tag}</span>
+                  ))}
+                  {tags.length === 0 && !isOwner && (
+                    <span className="text-xs text-muted-foreground/60 italic">No tags yet</span>
+                  )}
+                  {isOwner && (
+                    <button
+                      onClick={() => { setSelectedTags(tags); setEditingTags(true); }}
+                      className="text-xs px-2 py-1 rounded-lg border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors flex items-center gap-1"
+                    >
+                      <Pencil className="w-3 h-3" /> {tags.length ? "Edit" : "Add tags"}
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="w-full space-y-2">
+                  <p className="text-xs text-muted-foreground">Select up to 6 tags:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {KNOWN_TAGS.map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => setSelectedTags(prev =>
+                          prev.includes(tag) ? prev.filter(t => t !== tag) : prev.length < 6 ? [...prev, tag] : prev
+                        )}
+                        className={cn(
+                          "text-xs px-2.5 py-1 rounded-lg border transition-all",
+                          selectedTags.includes(tag)
+                            ? "bg-primary/10 border-primary/40 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                        )}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={handleSaveTags} disabled={isSavingTags}>
+                      {isSavingTags ? "Saving…" : "Save"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingTags(false)}>Cancel</Button>
+                    <span className="text-xs text-muted-foreground">{selectedTags.length}/6</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

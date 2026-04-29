@@ -56,6 +56,9 @@ public class KafkaConsumerService {
             project.setAnalysisVibeCheck(event.getVibeCheck());
             project.setAnalysisStrengths(event.getStrengths());
             project.setAnalysisImprovements(event.getImprovements());
+            if (event.getDetectedTags() != null && !event.getDetectedTags().isEmpty()) {
+                project.setStack(String.join(", ", event.getDetectedTags()));
+            }
             projectRepository.save(project);
             log.info("Updated Project {} → analyzed, aiScore={}", event.getProjectId(), event.getAiScore());
 

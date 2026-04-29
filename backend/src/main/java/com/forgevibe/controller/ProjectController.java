@@ -88,6 +88,15 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.diamondProject(id, requireUser(session), note));
     }
 
+    /** PATCH /api/projects/:id/tags */
+    @PatchMapping("/{id}/tags")
+    public ResponseEntity<ProjectResponse> updateTags(
+            @PathVariable Long id,
+            @RequestBody Map<String, List<String>> body,
+            HttpSession session) {
+        return ResponseEntity.ok(projectService.updateTags(id, body.get("tags"), requireUser(session)));
+    }
+
     /** POST /api/projects/:id/reanalyze */
     @PostMapping("/{id}/reanalyze")
     public ResponseEntity<ProjectResponse> reanalyze(@PathVariable Long id, HttpSession session) {

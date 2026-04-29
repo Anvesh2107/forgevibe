@@ -37,6 +37,7 @@ public class ProjectConsumer {
                 .vibeCheck(result.vibeCheck())
                 .strengths(result.strengths())
                 .improvements(result.improvements())
+                .detectedTags(result.detectedTags())
                 .build();
 
         kafkaTemplate.send("project.analyzed", String.valueOf(event.getProjectId()), analyzed);
