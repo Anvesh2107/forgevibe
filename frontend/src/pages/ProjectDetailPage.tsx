@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { ExternalLink, Heart, MessageSquare, Star, Github, Globe, Cpu, Shield, Code2, BookOpen, AlertTriangle, Pencil } from "lucide-react";
+import { ExternalLink, Heart, MessageSquare, Star, Github, Globe, Cpu, Shield, Code2, BookOpen, AlertTriangle, Pencil, Trash2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -38,6 +38,7 @@ function ScoreBar({ score, label, icon: Icon, color }: { score: number; label: s
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [, navigate] = useLocation();
   const { user, hasDiamondThisWeek } = useAuth();
   const { toast } = useToast();
   const [comment, setComment] = useState("");
@@ -46,6 +47,8 @@ export default function ProjectDetailPage() {
   const [editingTags, setEditingTags] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSavingTags, setIsSavingTags] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const KNOWN_TAGS = ["Java", "Python", "JavaScript", "TypeScript", "React", "Spring Boot",
     "Node.js", "AI/ML", "DevOps", "Security", "Open Source", "Mobile",
@@ -107,6 +110,21 @@ export default function ProjectDetailPage() {
     setIsLiking(false);
   };
 
+  const handleDeleteProject = async () => {
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    setIsDeleting(true);
+    try {
+      await apiRequest("DELETE", `/api/projects/${id}`, undefined);
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({ title: "Project deleted" });
+      navigate("/");
+    } catch {
+      toast({ title: "Failed to delete project", variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleComment = async () => {
     if (!user) { toast({ title: "Sign in to comment" }); return; }
     if (!comment.trim()) return;
@@ -137,7 +155,31 @@ export default function ProjectDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Header */}
           <div>
-            <h1 className="text-xl font-bold tracking-tight mb-1">{project.name}</h1>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-xl font-bold tracking-tight mb-1">{project.name}</h1>
+              {isOwner && (
+                <div className="shrink-0">
+                  {confirmDelete ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-400">Delete project?</span>
+                      <Button size="sm" variant="destructive" onClick={handleDeleteProject} disabled={isDeleting} className="h-7 px-2 text-xs">
+                        {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : "Yes"}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setConfirmDelete(false)} className="h-7 px-2 text-xs">No</Button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleDeleteProject}
+                      className="flex items-center gap-1 text-xs text-muted-foreground/50 hover:text-red-400 hover:bg-red-400/10 transition-all rounded-lg px-2 py-1"
+                      title="Delete project"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             <p className="text-muted-foreground text-sm leading-relaxed">{project.description}</p>
 
             <div className="flex flex-wrap gap-2 mt-3">

@@ -1,17 +1,27 @@
 import { useState } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Heart, MessageSquare, Send, ChevronLeft, Loader2, CheckCircle, CreditCard, Lock } from "lucide-react";
+import { Users, Heart, MessageSquare, Send, ChevronLeft, Loader2, CheckCircle, CreditCard, Lock, Settings, Trash2, X, DollarSign } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 
-function SpacePostCard({ post, onLike }: { post: any; onLike: (id: number) => void }) {
+function SpacePostCard({
+  post,
+  onLike,
+  onDelete,
+  canDelete,
+}: {
+  post: any;
+  onLike: (id: number) => void;
+  onDelete?: (id: number) => void;
+  canDelete?: boolean;
+}) {
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [isPosting, setIsPosting] = useState(false);
@@ -68,9 +78,17 @@ function SpacePostCard({ post, onLike }: { post: any; onLike: (id: number) => vo
             </div>
             <p className="text-sm leading-relaxed mt-1.5 whitespace-pre-wrap">{post.content}</p>
           </div>
+          {canDelete && (
+            <button
+              onClick={() => onDelete?.(post.id)}
+              className="text-muted-foreground/40 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-400/10 shrink-0"
+              title="Delete post"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
-        {/* Reaction counts */}
         {(post.likeCount > 0 || post.commentCount > 0) && (
           <div className="flex gap-3 text-xs text-muted-foreground mb-2 pl-12">
             {post.likeCount > 0 && <span>❤️ {post.likeCount}</span>}
@@ -79,7 +97,6 @@ function SpacePostCard({ post, onLike }: { post: any; onLike: (id: number) => vo
         )}
       </div>
 
-      {/* Action bar */}
       <div className="border-t border-border/50 mx-4" />
       <div className="flex items-stretch px-2 py-1">
         <button
@@ -103,7 +120,6 @@ function SpacePostCard({ post, onLike }: { post: any; onLike: (id: number) => vo
         </button>
       </div>
 
-      {/* Comments */}
       {showComments && (
         <div className="border-t border-border/50 px-4 pt-3 pb-4 space-y-3">
           {comments.map((c: any) => (
@@ -151,11 +167,23 @@ function SpacePostCard({ post, onLike }: { post: any; onLike: (id: number) => vo
 
 export default function SpaceDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [postContent, setPostContent] = useState("");
   const [isPosting, setIsPosting] = useState(false);
   const [isActing, setIsActing] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Settings form state
+  const [settingsName, setSettingsName] = useState("");
+  const [settingsDesc, setSettingsDesc] = useState("");
+  const [settingsEmoji, setSettingsEmoji] = useState("");
+  const [settingsPaid, setSettingsPaid] = useState(false);
+  const [settingsPrice, setSettingsPrice] = useState("");
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isDeletingSpace, setIsDeletingSpace] = useState(false);
+  const [confirmDeleteSpace, setConfirmDeleteSpace] = useState(false);
 
   const { data: space, isLoading: spaceLoading } = useQuery<any>({
     queryKey: [`/api/spaces/${id}`],
@@ -175,6 +203,62 @@ export default function SpaceDetailPage() {
     },
     enabled: !!id,
   });
+
+  const openSettings = () => {
+    setSettingsName(space?.name ?? "");
+    setSettingsDesc(space?.description ?? "");
+    setSettingsEmoji(space?.emoji ?? "");
+    setSettingsPaid(space?.isPaid ?? false);
+    setSettingsPrice(space?.priceMonthly?.toString() ?? "");
+    setConfirmDeleteSpace(false);
+    setShowSettings(true);
+  };
+
+  const handleSaveSettings = async () => {
+    setIsSavingSettings(true);
+    try {
+      const res = await apiRequest("PATCH", `/api/spaces/${id}`, {
+        name: settingsName,
+        description: settingsDesc,
+        emoji: settingsEmoji,
+        isPaid: settingsPaid,
+        priceMonthly: settingsPaid && settingsPrice ? parseFloat(settingsPrice) : null,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: err.error ?? "Failed to save", variant: "destructive" });
+      } else {
+        queryClient.invalidateQueries({ queryKey: [`/api/spaces/${id}`] });
+        queryClient.invalidateQueries({ queryKey: ["/api/spaces"] });
+        setShowSettings(false);
+        toast({ title: "Space updated!" });
+      }
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleDeleteSpace = async () => {
+    if (!confirmDeleteSpace) { setConfirmDeleteSpace(true); return; }
+    setIsDeletingSpace(true);
+    try {
+      await apiRequest("DELETE", `/api/spaces/${id}`, undefined);
+      queryClient.invalidateQueries({ queryKey: ["/api/spaces"] });
+      toast({ title: "Space deleted" });
+      navigate("/spaces");
+    } catch {
+      toast({ title: "Failed to delete space", variant: "destructive" });
+    } finally {
+      setIsDeletingSpace(false);
+    }
+  };
+
+  const handleDeletePost = async (postId: number) => {
+    await apiRequest("DELETE", `/api/spaces/posts/${postId}`, undefined);
+    refetchPosts();
+    queryClient.invalidateQueries({ queryKey: [`/api/spaces/${id}`] });
+    toast({ title: "Post deleted" });
+  };
 
   const handleJoinLeave = async () => {
     if (!user) { toast({ title: "Sign in to join" }); return; }
@@ -247,33 +331,178 @@ export default function SpaceDetailPage() {
               <span>{space.postCount} posts</span>
               <span>·</span>
               <span>by {space.owner?.username}</span>
+              {space.isPaid && (
+                <>
+                  <span>·</span>
+                  <span className="text-primary font-medium">💎 ${space.priceMonthly}/mo</span>
+                </>
+              )}
             </div>
           </div>
-          {!space.spaceOwner && !(space.isPaid && !space.member) && (
-            <Button
-              size="sm"
-              variant={space.member ? "outline" : "default"}
-              onClick={handleJoinLeave}
-              disabled={isActing}
-              className="shrink-0"
-            >
-              {isActing ? <Loader2 className="w-4 h-4 animate-spin" /> : space.member ? "Leave" : "Join Space"}
-            </Button>
-          )}
-          {space.isPaid && !space.member && !space.spaceOwner && (
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Lock className="w-3.5 h-3.5 text-primary" />
-              <span className="text-base font-bold text-primary">${space.priceMonthly}</span>
-              <span className="text-xs text-muted-foreground">/mo</span>
+
+          {/* Owner controls */}
+          {space.spaceOwner ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={openSettings}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-2.5 py-1.5 hover:border-border/80 transition-all"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                Settings
+              </button>
+              <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
+                Owner
+              </span>
             </div>
-          )}
-          {space.spaceOwner && (
-            <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium shrink-0">
-              Owner
-            </span>
+          ) : (
+            <>
+              {!space.spaceOwner && !(space.isPaid && !space.member) && (
+                <Button
+                  size="sm"
+                  variant={space.member ? "outline" : "default"}
+                  onClick={handleJoinLeave}
+                  disabled={isActing}
+                  className="shrink-0"
+                >
+                  {isActing ? <Loader2 className="w-4 h-4 animate-spin" /> : space.member ? "Leave" : "Join Space"}
+                </Button>
+              )}
+              {space.isPaid && !space.member && (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Lock className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-base font-bold text-primary">${space.priceMonthly}</span>
+                  <span className="text-xs text-muted-foreground">/mo</span>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
+
+      {/* ── Owner Settings Panel ── */}
+      {showSettings && space.spaceOwner && (
+        <div className="rounded-2xl border border-primary/20 bg-card card-elevated p-5 mb-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-sm">Space Settings</h3>
+            <button onClick={() => setShowSettings(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Basic info */}
+          <div className="grid grid-cols-[1fr_auto] gap-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground font-medium">Name</label>
+              <input
+                value={settingsName}
+                onChange={e => setSettingsName(e.target.value.slice(0, 80))}
+                className="w-full bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground font-medium">Emoji</label>
+              <input
+                value={settingsEmoji}
+                onChange={e => setSettingsEmoji(e.target.value)}
+                className="w-16 bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm text-center focus:outline-none focus:border-primary/50"
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground font-medium">Description</label>
+            <textarea
+              value={settingsDesc}
+              onChange={e => setSettingsDesc(e.target.value.slice(0, 300))}
+              rows={2}
+              className="w-full bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-primary/50"
+            />
+          </div>
+
+          {/* Paid toggle */}
+          <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Paid Space</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Require a monthly subscription to join</p>
+              </div>
+              <button
+                onClick={() => setSettingsPaid(v => !v)}
+                className={cn(
+                  "relative w-11 h-6 rounded-full transition-colors",
+                  settingsPaid ? "bg-primary" : "bg-muted-foreground/30"
+                )}
+              >
+                <span className={cn(
+                  "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm",
+                  settingsPaid ? "translate-x-6" : "translate-x-1"
+                )} />
+              </button>
+            </div>
+            {settingsPaid && (
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground font-medium">Monthly Price (USD)</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <input
+                    type="number"
+                    min="1"
+                    max="999"
+                    step="1"
+                    value={settingsPrice}
+                    onChange={e => setSettingsPrice(e.target.value)}
+                    placeholder="9"
+                    className="w-full pl-8 bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                  />
+                </div>
+                <p className="text-xs text-amber-400">Payment processing coming soon — members join free during beta.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Save */}
+          <Button
+            className="w-full"
+            onClick={handleSaveSettings}
+            disabled={isSavingSettings || !settingsName.trim()}
+          >
+            {isSavingSettings ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            Save Changes
+          </Button>
+
+          {/* Delete space */}
+          <div className="border-t border-border pt-4">
+            <p className="text-xs text-muted-foreground mb-2">Danger Zone</p>
+            {confirmDeleteSpace ? (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3 space-y-2">
+                <p className="text-xs text-red-400 font-medium">This will permanently delete the space and all its posts. Are you sure?</p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="flex-1"
+                    onClick={handleDeleteSpace}
+                    disabled={isDeletingSpace}
+                  >
+                    {isDeletingSpace ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Trash2 className="w-3 h-3 mr-1" />}
+                    Yes, Delete
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setConfirmDeleteSpace(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDeleteSpace(true)}
+                className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete this space
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Post composer — members only */}
       {(space.member || space.spaceOwner) ? (
@@ -301,7 +530,6 @@ export default function SpaceDetailPage() {
           </div>
         </div>
       ) : space.isPaid ? (
-        /* ── Payment gateway for paid spaces ── */
         <div className="rounded-2xl border border-primary/20 bg-card card-elevated p-6 mb-5">
           <div className="text-center mb-6">
             <div className="text-5xl mb-3">{space.emoji}</div>
@@ -327,34 +555,26 @@ export default function SpaceDetailPage() {
             ))}
           </div>
 
-          {/* Grayed-out payment form — visual only */}
           <div className="space-y-2.5 mb-5 opacity-35 select-none pointer-events-none">
             <div className="flex items-center gap-2 mb-1">
               <CreditCard className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground font-medium">Payment Details</span>
             </div>
-            <input
-              readOnly
-              placeholder="•••• •••• •••• ••••"
-              className="w-full bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60"
-            />
+            <input readOnly placeholder="•••• •••• •••• ••••" className="w-full bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60" />
             <div className="flex gap-3">
               <input readOnly placeholder="MM / YY" className="flex-1 bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60" />
               <input readOnly placeholder="CVC" className="flex-1 bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60" />
             </div>
           </div>
 
-          {/* Beta notice */}
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 mb-4 text-center">
             <p className="text-xs text-amber-400 leading-relaxed">
-              <span className="font-semibold">Payment processing coming soon!</span> We're still setting up our payment system — no card required yet. Click below to join for free during beta. Early members get grandfathered pricing when subscriptions launch.
+              <span className="font-semibold">Payment processing coming soon!</span> No card required yet — join free during beta and get grandfathered pricing when subscriptions launch.
             </p>
           </div>
 
           <Button className="w-full" size="lg" onClick={handleJoinLeave} disabled={isActing}>
-            {isActing
-              ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              : <Heart className="w-4 h-4 mr-2" />}
+            {isActing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Heart className="w-4 h-4 mr-2" />}
             I'm Interested — Join Free During Beta
           </Button>
         </div>
@@ -389,7 +609,13 @@ export default function SpaceDetailPage() {
           </div>
         ) : (
           posts.map((post: any) => (
-            <SpacePostCard key={post.id} post={post} onLike={handleLike} />
+            <SpacePostCard
+              key={post.id}
+              post={post}
+              onLike={handleLike}
+              onDelete={handleDeletePost}
+              canDelete={space.spaceOwner || user?.username === post.author?.username}
+            />
           ))
         )}
       </div>

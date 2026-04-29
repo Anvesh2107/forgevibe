@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface SpacePostRepository extends JpaRepository<SpacePost, Long> {
     List<SpacePost> findBySpaceIdOrderByCreatedAtDesc(Long spaceId);
+    List<SpacePost> findBySpaceId(Long spaceId);
 }

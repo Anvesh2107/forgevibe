@@ -8,4 +8,5 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByContentTypeAndContentIdAndParentIdIsNullOrderByCreatedAtAsc(String contentType, Long contentId);
     List<Comment> findByParentIdOrderByCreatedAtAsc(Long parentId);
     long countByContentTypeAndContentId(String contentType, Long contentId);
+    void deleteByContentTypeAndContentId(String contentType, Long contentId);
 }

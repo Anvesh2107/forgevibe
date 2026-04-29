@@ -233,6 +233,19 @@ public class ProjectService {
         return toResponse(project, user);
     }
 
+    @Transactional
+    public void deleteProject(Long projectId, User user) {
+        Project project = projectRepo.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+        if (!project.getAuthor().getId().equals(user.getId()))
+            throw new RuntimeException("UNAUTHORIZED");
+        likeRepo.deleteByContentTypeAndContentId("project", projectId);
+        likeRepo.deleteByContentTypeAndContentId("star", projectId);
+        commentRepo.deleteByContentTypeAndContentId("project", projectId);
+        diamondRepo.deleteAll(diamondRepo.findByProjectIdOrderByCreatedAtDesc(projectId));
+        projectRepo.delete(project);
+    }
+
     public ProjectResponse retriggerAnalysis(Long projectId, User viewer) {
         Project project = projectRepo.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));

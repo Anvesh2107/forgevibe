@@ -97,6 +97,13 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.updateTags(id, body.get("tags"), requireUser(session)));
     }
 
+    /** DELETE /api/projects/:id */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id, HttpSession session) {
+        projectService.deleteProject(id, requireUser(session));
+        return ResponseEntity.noContent().build();
+    }
+
     /** POST /api/projects/:id/reanalyze */
     @PostMapping("/{id}/reanalyze")
     public ResponseEntity<ProjectResponse> reanalyze(@PathVariable Long id, HttpSession session) {

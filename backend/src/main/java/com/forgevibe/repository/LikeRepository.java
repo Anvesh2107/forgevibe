@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface LikeRepository extends JpaRepository<Like, Long> {
     List<Like> findByContentTypeAndContentId(String contentType, Long contentId);
     Optional<Like> findByContentTypeAndContentIdAndUser(String contentType, Long contentId, User user);
+    void deleteByContentTypeAndContentId(String contentType, Long contentId);
 
     @Query("SELECT p.author.id, COUNT(l) FROM com.forgevibe.entity.Project p JOIN Like l ON l.contentId = p.id WHERE l.contentType = 'project' AND l.createdAt >= :since GROUP BY p.author.id")
     List<Object[]> countProjectLikesPerAuthorSince(@Param("since") LocalDateTime since);

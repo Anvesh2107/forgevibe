@@ -100,6 +100,29 @@ public class SpaceController {
         return ResponseEntity.ok(spaceService.createPost(id, content, requireUser(session)));
     }
 
+    /** PATCH /api/spaces/{id} — update space settings (owner only) */
+    @PatchMapping("/{id}")
+    public ResponseEntity<SpaceResponse> update(
+            @PathVariable Long id,
+            @RequestBody SpaceRequest req,
+            HttpSession session) {
+        return ResponseEntity.ok(spaceService.updateSpace(id, req, requireUser(session)));
+    }
+
+    /** DELETE /api/spaces/{id} — delete space (owner only) */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id, HttpSession session) {
+        spaceService.deleteSpace(id, requireUser(session));
+        return ResponseEntity.noContent().build();
+    }
+
+    /** DELETE /api/spaces/posts/{postId} — delete a post (space owner or post author) */
+    @DeleteMapping("/posts/{postId}")
+    public ResponseEntity<Void> deletePost(@PathVariable Long postId, HttpSession session) {
+        spaceService.deletePost(postId, requireUser(session));
+        return ResponseEntity.noContent().build();
+    }
+
     /** POST /api/spaces/posts/{postId}/like */
     @PostMapping("/posts/{postId}/like")
     public ResponseEntity<SpacePostResponse> toggleLike(@PathVariable Long postId, HttpSession session) {

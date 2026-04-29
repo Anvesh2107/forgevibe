@@ -166,6 +166,56 @@ public class SpaceService {
         return toPostResponse(post, user);
     }
 
+    @org.springframework.transaction.annotation.Transactional
+    public SpaceResponse updateSpace(Long id, SpaceRequest req, User user) {
+        Space space = spaceRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Space not found: " + id));
+        if (!space.getOwner().getId().equals(user.getId()))
+            throw new RuntimeException("Only the owner can edit this space");
+        if (req.getName() != null && !req.getName().isBlank()) space.setName(req.getName());
+        if (req.getDescription() != null) space.setDescription(req.getDescription());
+        if (req.getEmoji() != null && !req.getEmoji().isBlank()) space.setEmoji(req.getEmoji());
+        boolean paid = req.isPaid();
+        Double price = paid && req.getPriceMonthly() != null && req.getPriceMonthly() > 0
+                ? req.getPriceMonthly() : null;
+        if (paid && price == null) paid = false;
+        space.setPaid(paid);
+        space.setPriceMonthly(price);
+        return toResponse(spaceRepo.save(space), user);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteSpace(Long id, User user) {
+        Space space = spaceRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Space not found: " + id));
+        if (!space.getOwner().getId().equals(user.getId()))
+            throw new RuntimeException("Only the owner can delete this space");
+        List<SpacePost> posts = postRepo.findBySpaceId(id);
+        for (SpacePost post : posts) {
+            likeRepo.deleteByContentTypeAndContentId("spacepost", post.getId());
+            commentRepo.deleteByContentTypeAndContentId("spacepost", post.getId());
+        }
+        postRepo.deleteAll(posts);
+        memberRepo.deleteBySpaceId(id);
+        spaceRepo.delete(space);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void deletePost(Long postId, User user) {
+        SpacePost post = postRepo.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found: " + postId));
+        Space space = post.getSpace();
+        boolean isSpaceOwner = space.getOwner().getId().equals(user.getId());
+        boolean isPostAuthor = post.getAuthor().getId().equals(user.getId());
+        if (!isSpaceOwner && !isPostAuthor)
+            throw new RuntimeException("Not authorized to delete this post");
+        likeRepo.deleteByContentTypeAndContentId("spacepost", postId);
+        commentRepo.deleteByContentTypeAndContentId("spacepost", postId);
+        postRepo.delete(post);
+        space.setPostCount(Math.max(0, space.getPostCount() - 1));
+        spaceRepo.save(space);
+    }
+
     public List<SpaceResponse> getByOwnerId(Long ownerId, User viewer) {
         return spaceRepo.findByOwnerIdOrderByCreatedAtDesc(ownerId)
                 .stream().map(s -> toResponse(s, viewer)).toList();
