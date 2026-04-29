@@ -43,6 +43,7 @@ function SpacePostCard({ post, onLike }: { post: any; onLike: (id: number) => vo
     await apiRequest("POST", `/api/spaces/posts/${post.id}/comments`, { content: commentText });
     setCommentText("");
     refetchComments();
+    queryClient.invalidateQueries({ queryKey: [`/api/spaces/${post.spaceId}/posts`] });
     setIsPosting(false);
   };
 

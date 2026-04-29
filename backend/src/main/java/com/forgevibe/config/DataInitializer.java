@@ -38,7 +38,7 @@ public class DataInitializer implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (userRepository.findByUsername("forgevibe").isPresent()) return;
+        if (spaceRepository.count() > 0) return;
 
         User system = userRepository.findByUsername("forgevibe")
             .orElseGet(() -> userRepository.save(

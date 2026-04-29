@@ -236,6 +236,8 @@ public class ProjectService {
     public ProjectResponse retriggerAnalysis(Long projectId, User viewer) {
         Project project = projectRepo.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found: " + projectId));
+        if (!project.getAuthor().getId().equals(viewer.getId()))
+            throw new RuntimeException("UNAUTHORIZED");
         boolean isGithub = project.getRepoUrl() != null && project.getRepoUrl().contains("github.com");
         if (!isGithub) throw new RuntimeException("Not a GitHub project");
         project.setAnalysisStatus("pending");

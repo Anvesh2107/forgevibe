@@ -16,6 +16,9 @@ public class AiValidationService {
     @Value("${ai.openai.api-key:}")
     private String openAiKey;
 
+    @Value("${github.token:}")
+    private String githubToken;
+
     @Value("${ai.openai.model:gpt-4o-mini}")
     private String model;
 
@@ -116,8 +119,13 @@ public class AiValidationService {
             String path = repoUrl.replaceFirst("https?://github\\.com/", "").replaceAll("\\.git$", "").replaceAll("/$", "");
             String apiBase = "https://api.github.com/repos/" + path;
 
-            String repoJson = WebClient.builder().build()
-                    .get().uri(apiBase)
+            WebClient.Builder ghBuilder = WebClient.builder();
+            if (githubToken != null && !githubToken.isBlank()) {
+                ghBuilder = ghBuilder.defaultHeader("Authorization", "token " + githubToken);
+            }
+            WebClient gh = ghBuilder.build();
+
+            String repoJson = gh.get().uri(apiBase)
                     .header("Accept", "application/vnd.github+json")
                     .retrieve().bodyToMono(String.class)
                     .onErrorReturn("{}").block();
@@ -130,8 +138,7 @@ public class AiValidationService {
             String topics = repo.path("topics").toString();
 
             // Fetch README (base64-encoded)
-            String readmeJson = WebClient.builder().build()
-                    .get().uri(apiBase + "/readme")
+            String readmeJson = gh.get().uri(apiBase + "/readme")
                     .header("Accept", "application/vnd.github+json")
                     .retrieve().bodyToMono(String.class)
                     .onErrorReturn("{}").block();
@@ -363,13 +370,13 @@ public class AiValidationService {
                 "max_tokens", maxTokens
         );
         return webClient.post()
-                .uri("/chat/completions")
+                .uri("/v1/chat/completions")
                 .header("Authorization", "Bearer " + openAiKey)
                 .header("Content-Type", "application/json")
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(String.class)
-                .block();
+                .block(java.time.Duration.ofSeconds(30));
     }
 
     private JsonNode parseJsonFromResponse(String response) throws Exception {

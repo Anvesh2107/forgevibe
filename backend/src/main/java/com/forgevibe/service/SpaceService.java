@@ -32,19 +32,26 @@ public class SpaceService {
     private final UserService userService;
 
     public SpaceResponse createSpace(SpaceRequest req, User owner) {
-        String slug = generateSlug(req.getName());
         String emoji = req.getEmoji() != null && !req.getEmoji().isBlank() ? req.getEmoji() : "🚀";
 
-        Space space = Space.builder()
-                .name(req.getName())
-                .slug(slug)
-                .description(req.getDescription())
-                .emoji(emoji)
-                .owner(owner)
-                .memberCount(1)
-                .postCount(0)
-                .build();
-        space = spaceRepo.save(space);
+        Space space = null;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            try {
+                String slug = generateSlug(req.getName());
+                space = spaceRepo.save(Space.builder()
+                        .name(req.getName())
+                        .slug(slug)
+                        .description(req.getDescription())
+                        .emoji(emoji)
+                        .owner(owner)
+                        .memberCount(1)
+                        .postCount(0)
+                        .build());
+                break;
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                if (attempt == 4) throw e;
+            }
+        }
 
         memberRepo.save(SpaceMember.builder()
                 .space(space)
@@ -119,13 +126,16 @@ public class SpaceService {
         return toPostResponse(post, author);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public SpacePostResponse toggleLike(Long postId, User user) {
         SpacePost post = postRepo.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found: " + postId));
+        User author = post.getAuthor();
         Optional<Like> existing = likeRepo.findByContentTypeAndContentIdAndUser("spacepost", postId, user);
         if (existing.isPresent()) {
             likeRepo.delete(existing.get());
             post.setLikeCount(Math.max(0, post.getLikeCount() - 1));
+            author.setTotalLikes(Math.max(0, author.getTotalLikes() - 1));
         } else {
             likeRepo.save(Like.builder()
                     .contentType("spacepost")
@@ -134,8 +144,10 @@ public class SpaceService {
                     .reactionType("like")
                     .build());
             post.setLikeCount(post.getLikeCount() + 1);
+            author.setTotalLikes(author.getTotalLikes() + 1);
         }
         postRepo.save(post);
+        userService.recalcScore(author, 0);
         return toPostResponse(post, user);
     }
 
@@ -181,6 +193,7 @@ public class SpaceService {
                 .replaceAll("^-|-$", "");
         if (base.isBlank()) base = "space";
         if (!spaceRepo.existsBySlug(base)) return base;
-        return base + "-" + UUID.randomUUID().toString().substring(0, 6);
+        // Append unique suffix; DB unique constraint is the true race guard
+        return base + "-" + UUID.randomUUID().toString().substring(0, 8);
     }
 }

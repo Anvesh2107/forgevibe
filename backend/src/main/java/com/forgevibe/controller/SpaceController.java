@@ -78,11 +78,16 @@ public class SpaceController {
 
     /** POST /api/spaces/{id}/posts */
     @PostMapping("/{id}/posts")
-    public ResponseEntity<SpacePostResponse> createPost(
+    public ResponseEntity<?> createPost(
             @PathVariable Long id,
             @RequestBody Map<String, String> body,
             HttpSession session) {
-        return ResponseEntity.ok(spaceService.createPost(id, body.get("content"), requireUser(session)));
+        String content = body.get("content");
+        if (content == null || content.isBlank())
+            return ResponseEntity.badRequest().body(Map.of("error", "Content required"));
+        if (content.length() > 2000)
+            return ResponseEntity.badRequest().body(Map.of("error", "Content too long (max 2000 characters)"));
+        return ResponseEntity.ok(spaceService.createPost(id, content, requireUser(session)));
     }
 
     /** POST /api/spaces/posts/{postId}/like */

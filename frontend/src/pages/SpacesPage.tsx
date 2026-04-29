@@ -99,16 +99,24 @@ export default function SpacesPage() {
   const handleJoin = async (id: number) => {
     if (!user) { toast({ title: "Sign in to join" }); return; }
     setActingId(id);
-    await apiRequest("POST", `/api/spaces/${id}/join`, {});
-    queryClient.invalidateQueries({ queryKey: ["/api/spaces"] });
+    try {
+      await apiRequest("POST", `/api/spaces/${id}/join`, {});
+      queryClient.invalidateQueries({ queryKey: ["/api/spaces"] });
+    } catch {
+      toast({ title: "Failed to join space", variant: "destructive" });
+    }
     setActingId(null);
   };
 
   const handleLeave = async (id: number) => {
     if (!user) return;
     setActingId(id);
-    await apiRequest("POST", `/api/spaces/${id}/leave`, {});
-    queryClient.invalidateQueries({ queryKey: ["/api/spaces"] });
+    try {
+      await apiRequest("POST", `/api/spaces/${id}/leave`, {});
+      queryClient.invalidateQueries({ queryKey: ["/api/spaces"] });
+    } catch {
+      toast({ title: "Failed to leave space", variant: "destructive" });
+    }
     setActingId(null);
   };
 
