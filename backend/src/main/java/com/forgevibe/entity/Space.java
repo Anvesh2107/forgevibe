@@ -31,7 +31,7 @@ public class Space {
     private User owner;
 
     @Builder.Default
-    @Column(name = "is_paid")
+    @Column(name = "is_paid", nullable = false, columnDefinition = "boolean not null default false")
     private boolean isPaid = false;
 
     @Column(name = "price_monthly")
