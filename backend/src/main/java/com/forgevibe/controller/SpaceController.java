@@ -39,7 +39,10 @@ public class SpaceController {
     @GetMapping
     public ResponseEntity<List<SpaceResponse>> list(HttpSession session) {
         Long userId = sessionUser.getUserId(session);
-        User viewer = userId != null ? userService.getById(userId) : null;
+        User viewer = null;
+        if (userId != null) {
+            try { viewer = userService.getById(userId); } catch (RuntimeException ignored) {}
+        }
         return ResponseEntity.ok(spaceService.getAll(viewer));
     }
 
@@ -53,7 +56,10 @@ public class SpaceController {
     @GetMapping("/{id}")
     public ResponseEntity<SpaceResponse> get(@PathVariable Long id, HttpSession session) {
         Long userId = sessionUser.getUserId(session);
-        User viewer = userId != null ? userService.getById(userId) : null;
+        User viewer = null;
+        if (userId != null) {
+            try { viewer = userService.getById(userId); } catch (RuntimeException ignored) {}
+        }
         return ResponseEntity.ok(spaceService.getById(id, viewer));
     }
 
@@ -73,7 +79,10 @@ public class SpaceController {
     @GetMapping("/{id}/posts")
     public ResponseEntity<List<SpacePostResponse>> getPosts(@PathVariable Long id, HttpSession session) {
         Long userId = sessionUser.getUserId(session);
-        User viewer = userId != null ? userService.getById(userId) : null;
+        User viewer = null;
+        if (userId != null) {
+            try { viewer = userService.getById(userId); } catch (RuntimeException ignored) {}
+        }
         return ResponseEntity.ok(spaceService.getPosts(id, viewer));
     }
 

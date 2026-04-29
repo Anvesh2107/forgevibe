@@ -1,5 +1,6 @@
 package com.forgevibe.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import java.time.LocalDateTime;
 
@@ -16,6 +17,7 @@ public class SpaceResponse {
     private LocalDateTime createdAt;
     private boolean member;
     private boolean spaceOwner;
+    @JsonProperty("isPaid")
     private boolean isPaid;
     private Double priceMonthly;
 }
