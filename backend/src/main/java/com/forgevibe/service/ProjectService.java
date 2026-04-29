@@ -14,16 +14,20 @@ import com.forgevibe.repository.ProjectDiamondRepository;
 import com.forgevibe.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ProjectService {
+
+    private static final Set<String> VALID_REACTIONS = Set.of("like", "fire", "rocket", "mind_blown");
 
     private final ProjectRepository projectRepo;
     private final LikeRepository likeRepo;
@@ -80,7 +84,11 @@ public class ProjectService {
                 .stream().map(p -> toResponse(p, viewer)).toList();
     }
 
+    @Transactional
     public ProjectResponse react(Long projectId, String reactionType, User user) {
+        if (!VALID_REACTIONS.contains(reactionType)) {
+            throw new RuntimeException("Invalid reaction type");
+        }
         Project project = projectRepo.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
@@ -107,18 +115,35 @@ public class ProjectService {
         return toResponse(project, user);
     }
 
+    @Transactional
     public ProjectResponse starProject(Long projectId, User user) {
         Project project = projectRepo.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
-        project.setStars(project.getStars() + 1);
-        projectRepo.save(project);
-
         User author = project.getAuthor();
-        author.setStars(author.getStars() + 1);
-        userService.recalcScore(author, 0);
+
+        Optional<Like> existing = likeRepo.findByContentTypeAndContentIdAndUser("star", projectId, user);
+        if (existing.isPresent()) {
+            likeRepo.delete(existing.get());
+            project.setStars(Math.max(0, project.getStars() - 1));
+            projectRepo.save(project);
+            author.setStars(Math.max(0, author.getStars() - 1));
+            userService.recalcScore(author, 0);
+        } else {
+            likeRepo.save(Like.builder()
+                    .contentType("star")
+                    .contentId(projectId)
+                    .user(user)
+                    .reactionType("star")
+                    .build());
+            project.setStars(project.getStars() + 1);
+            projectRepo.save(project);
+            author.setStars(author.getStars() + 1);
+            userService.recalcScore(author, 0);
+        }
         return toResponse(project, user);
     }
 
+    @Transactional
     public ProjectResponse toggleLike(Long projectId, User user) {
         Project project = projectRepo.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
@@ -149,6 +174,7 @@ public class ProjectService {
         return toResponse(project, user);
     }
 
+    @Transactional
     public ProjectResponse diamondProject(Long projectId, User user, String note) {
         Project project = projectRepo.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));

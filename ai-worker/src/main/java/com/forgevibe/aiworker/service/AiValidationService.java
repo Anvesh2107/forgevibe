@@ -363,7 +363,7 @@ public class AiValidationService {
                 "max_tokens", maxTokens
         );
         return webClient.post()
-                .uri("/v1/chat/completions")
+                .uri("/chat/completions")
                 .header("Authorization", "Bearer " + openAiKey)
                 .header("Content-Type", "application/json")
                 .bodyValue(body)

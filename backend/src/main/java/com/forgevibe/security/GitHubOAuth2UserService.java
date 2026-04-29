@@ -42,8 +42,10 @@ public class GitHubOAuth2UserService extends DefaultOAuth2UserService {
                     .bio(bio)
                     .publicRepoCount(publicRepos)
                     .followerCount(followers)
+                    .role("USER")
                     .build();
         } else {
+            // Update profile fields but preserve role — never overwrite an admin's role on re-login
             user.setUsername(login);
             user.setAvatarUrl(avatarUrl);
             user.setBio(bio);

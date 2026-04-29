@@ -12,6 +12,7 @@ import com.forgevibe.repository.LikeRepository;
 import com.forgevibe.repository.ThoughtPostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -68,6 +69,7 @@ public class ThoughtService {
                 .toList();
     }
 
+    @Transactional
     public ThoughtResponse react(Long thoughtId, String reactionType, User user) {
         ThoughtPost post = thoughtRepo.findById(thoughtId)
                 .orElseThrow(() -> new RuntimeException("Thought not found"));
@@ -76,10 +78,13 @@ public class ThoughtService {
         if (existing.isPresent()) {
             Like like = existing.get();
             if (like.getReactionType().equals(reactionType)) {
-                likeRepo.delete(like); // toggle off
+                likeRepo.delete(like); // toggle off — also decrement author likes
+                User author = post.getAuthor();
+                author.setTotalLikes(Math.max(0, author.getTotalLikes() - 1));
+                userService.recalcScore(author, 0);
             } else {
                 like.setReactionType(reactionType);
-                likeRepo.save(like);  // switch reaction
+                likeRepo.save(like);  // switch reaction — count stays same
             }
         } else {
             likeRepo.save(Like.builder()
@@ -88,7 +93,6 @@ public class ThoughtService {
                     .user(user)
                     .reactionType(reactionType)
                     .build());
-            // update author totalLikes
             User author = post.getAuthor();
             author.setTotalLikes(author.getTotalLikes() + 1);
             userService.recalcScore(author, 0);
@@ -96,9 +100,13 @@ public class ThoughtService {
         return toResponse(post, user);
     }
 
+    @Transactional
     public void appeal(Long thoughtId, String message, User user) {
         ThoughtPost post = thoughtRepo.findById(thoughtId)
                 .orElseThrow(() -> new RuntimeException("Thought not found"));
+        if (!post.getAuthor().getId().equals(user.getId())) {
+            throw new RuntimeException("NOT_OWNER");
+        }
         post.setAppealMessage(message);
         post.setAppealStatus("pending");
         thoughtRepo.save(post);

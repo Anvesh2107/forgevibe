@@ -39,7 +39,7 @@ export default function AdminPage() {
   });
 
   const handleDecide = async (id: number, status: "approved" | "rejected") => {
-    await apiRequest("POST", `/api/admin/reports/${id}/decide`, { status });
+    await apiRequest("POST", `/api/admin/reports/${id}/resolve`, { status });
     queryClient.invalidateQueries({ queryKey: ["/api/admin/reports"] });
     toast({ title: status === "approved" ? "Report approved — content removed" : "Report rejected" });
   };

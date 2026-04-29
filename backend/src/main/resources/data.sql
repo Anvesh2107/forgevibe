@@ -12,3 +12,10 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Advance the sequence past the manually-inserted seed IDs so new rows don't collide
 SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
+
+-- Add role column if it doesn't exist yet (idempotent migration)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role varchar(20);
+-- Backfill existing rows that have no role
+UPDATE users SET role = 'USER' WHERE role IS NULL;
+-- Grant admin role to the first demo user
+UPDATE users SET role = 'ADMIN' WHERE username = 'torvalds_demo';

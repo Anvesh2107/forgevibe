@@ -3,11 +3,16 @@ package com.forgevibe.service;
 import com.forgevibe.dto.response.LeaderboardEntry;
 import com.forgevibe.dto.response.UserResponse;
 import com.forgevibe.entity.User;
+import com.forgevibe.repository.LikeRepository;
+import com.forgevibe.repository.ProjectDiamondRepository;
 import com.forgevibe.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.time.LocalDateTime;
+import java.time.temporal.TemporalAdjusters;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Service
@@ -15,6 +20,8 @@ import java.util.stream.IntStream;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final LikeRepository likeRepository;
+    private final ProjectDiamondRepository diamondRepository;
 
     public UserResponse toResponse(User u) {
         return UserResponse.builder()
@@ -55,6 +62,9 @@ public class UserService {
     }
 
     public List<LeaderboardEntry> getLeaderboard(String period) {
+        if ("monthly".equals(period)) {
+            return getMonthlyLeaderboard();
+        }
         List<User> users = userRepository.findAllByOrderByForgeScoreDesc();
         return IntStream.range(0, users.size())
                 .mapToObj(i -> {
@@ -69,5 +79,47 @@ public class UserService {
                             .build();
                 })
                 .toList();
+    }
+
+    private List<LeaderboardEntry> getMonthlyLeaderboard() {
+        LocalDateTime monthStart = LocalDateTime.now()
+                .with(TemporalAdjusters.firstDayOfMonth()).toLocalDate().atStartOfDay();
+
+        Map<Long, Long> diamondsByUser = new HashMap<>();
+        for (Object[] row : diamondRepository.countDiamondsPerAuthorSince(monthStart)) {
+            diamondsByUser.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+        }
+
+        Map<Long, Long> likesByUser = new HashMap<>();
+        for (Object[] row : likeRepository.countProjectLikesPerAuthorSince(monthStart)) {
+            likesByUser.merge(((Number) row[0]).longValue(), ((Number) row[1]).longValue(), Long::sum);
+        }
+        for (Object[] row : likeRepository.countThoughtLikesPerAuthorSince(monthStart)) {
+            likesByUser.merge(((Number) row[0]).longValue(), ((Number) row[1]).longValue(), Long::sum);
+        }
+
+        Set<Long> activeUserIds = new HashSet<>(diamondsByUser.keySet());
+        activeUserIds.addAll(likesByUser.keySet());
+
+        List<LeaderboardEntry> entries = activeUserIds.stream()
+                .map(uid -> userRepository.findById(uid).map(u -> {
+                    long d = diamondsByUser.getOrDefault(uid, 0L);
+                    long l = likesByUser.getOrDefault(uid, 0L);
+                    return LeaderboardEntry.builder()
+                            .user(toResponse(u))
+                            .forgeScore((int) (d * 50 + l))
+                            .diamonds((int) d)
+                            .stars(0)
+                            .totalLikes((int) l)
+                            .build();
+                }).orElse(null))
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparingInt(LeaderboardEntry::getForgeScore).reversed())
+                .collect(Collectors.toList());
+
+        for (int i = 0; i < entries.size(); i++) {
+            entries.get(i).setRank(i + 1);
+        }
+        return entries;
     }
 }

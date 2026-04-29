@@ -9,6 +9,7 @@ import com.forgevibe.service.UserService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,15 +27,22 @@ public class AuthController {
     private final SessionUser sessionUser;
     private final ProjectDiamondRepository diamondRepo;
 
-    /** POST /api/auth/login-demo   body: { "userId": 1 } */
+    @Value("${app.demo-login-enabled:false}")
+    private boolean demoLoginEnabled;
+
+    /** POST /api/auth/login-demo   body: { "userId": 1 } — only enabled when DEMO_LOGIN_ENABLED=true */
     @PostMapping("/login-demo")
     public ResponseEntity<?> loginDemo(@Valid @RequestBody LoginRequest req, HttpSession session) {
-        if (req.getUserId() < 1 || req.getUserId() > 7) {
-            return ResponseEntity.badRequest().body(Map.of("error", "userId must be 1–7"));
+        if (!demoLoginEnabled) {
+            return ResponseEntity.status(403).body(Map.of("error", "Demo login is disabled"));
         }
-        User user = userService.getById(req.getUserId());
-        sessionUser.set(session, user);
-        return ResponseEntity.ok(userService.toResponse(user));
+        try {
+            User user = userService.getById(req.getUserId());
+            sessionUser.set(session, user);
+            return ResponseEntity.ok(userService.toResponse(user));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+        }
     }
 
     /** GET /api/auth/me */

@@ -36,7 +36,7 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "*"
+        spring.json.trusted.packages: "com.forgevibe.event"
         spring.json.add.type.headers: false
 
   security:
@@ -67,6 +67,7 @@ server:
 
 app:
   frontend-url: ${APP_BASE_URL:http://localhost:3000}
+  demo-login-enabled: ${DEMO_LOGIN_ENABLED:false}
 
 logging:
   level:

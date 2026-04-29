@@ -45,6 +45,10 @@ public class User {
     @Column(unique = true, length = 40)
     private String githubId;
 
+    @Column(length = 20)
+    @Builder.Default
+    private String role = "USER";
+
     @Column(nullable = false)
     @Builder.Default
     private Integer publicRepoCount = 0;
