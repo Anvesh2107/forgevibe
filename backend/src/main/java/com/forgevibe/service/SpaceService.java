@@ -31,6 +31,7 @@ public class SpaceService {
     private final CommentRepository commentRepo;
     private final UserService userService;
 
+    @org.springframework.transaction.annotation.Transactional
     public SpaceResponse createSpace(SpaceRequest req, User owner) {
         String emoji = req.getEmoji() != null && !req.getEmoji().isBlank() ? req.getEmoji() : "🚀";
 

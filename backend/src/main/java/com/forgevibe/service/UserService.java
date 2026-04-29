@@ -98,18 +98,25 @@ public class UserService {
             likesByUser.merge(((Number) row[0]).longValue(), ((Number) row[1]).longValue(), Long::sum);
         }
 
+        Map<Long, Long> starsByUser = new HashMap<>();
+        for (Object[] row : likeRepository.countStarsPerAuthorSince(monthStart)) {
+            starsByUser.merge(((Number) row[0]).longValue(), ((Number) row[1]).longValue(), Long::sum);
+        }
+
         Set<Long> activeUserIds = new HashSet<>(diamondsByUser.keySet());
         activeUserIds.addAll(likesByUser.keySet());
+        activeUserIds.addAll(starsByUser.keySet());
 
         List<LeaderboardEntry> entries = activeUserIds.stream()
                 .map(uid -> userRepository.findById(uid).map(u -> {
                     long d = diamondsByUser.getOrDefault(uid, 0L);
                     long l = likesByUser.getOrDefault(uid, 0L);
+                    long s = starsByUser.getOrDefault(uid, 0L);
                     return LeaderboardEntry.builder()
                             .user(toResponse(u))
-                            .forgeScore((int) (d * 50 + l))
+                            .forgeScore((int) (d * 50 + s * 3 + l))
                             .diamonds((int) d)
-                            .stars(0)
+                            .stars((int) s)
                             .totalLikes((int) l)
                             .build();
                 }).orElse(null))

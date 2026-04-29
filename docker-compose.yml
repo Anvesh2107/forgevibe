@@ -106,6 +106,7 @@ services:
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-not-configured}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-not-configured}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      APP_DEMO_LOGIN_ENABLED: ${APP_DEMO_LOGIN_ENABLED:-false}
     ports:
       - "8080:8080"
     logging:

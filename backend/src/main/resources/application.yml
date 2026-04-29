@@ -67,7 +67,7 @@ server:
 
 app:
   frontend-url: ${APP_BASE_URL:http://localhost:3000}
-  demo-login-enabled: ${DEMO_LOGIN_ENABLED:false}
+  demo-login-enabled: ${APP_DEMO_LOGIN_ENABLED:true}
 
 logging:
   level:
