@@ -147,7 +147,7 @@ export default function ProjectDetailPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-sm">AI Analysis Running</h3>
+                    <h3 className="font-semibold text-sm">Perplexity is analyzing…</h3>
                     <span className="flex gap-0.5">
                       {[0, 1, 2].map(i => (
                         <span
@@ -158,7 +158,7 @@ export default function ProjectDetailPage() {
                       ))}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">Scanning repository for patterns…</p>
+                  <p className="text-xs text-muted-foreground truncate">Searching GitHub + scanning code in real-time…</p>
                 </div>
               </div>
               <div className="space-y-2.5">
@@ -179,10 +179,22 @@ export default function ProjectDetailPage() {
             </div>
           ) : analysis ? (
             <div className="rounded-xl border border-card-border bg-card p-5 space-y-5">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">🤖</span>
-                <h3 className="font-semibold">AI Repository Analysis</h3>
-                <span className="text-xs text-muted-foreground ml-auto font-mono">by Perplexity Computer</span>
+              {/* Perplexity analysis header */}
+              <div className="flex items-center gap-3 pb-3 border-b border-border/60">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1d4ed8] to-[#06B6D4] flex items-center justify-center text-base shadow shrink-0">
+                  🔍
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-sm">AI Repository Analysis</h3>
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                      Perplexity AI
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Real-time web search + code scan — not training data guesses
+                  </p>
+                </div>
               </div>
 
               {/* Summary */}

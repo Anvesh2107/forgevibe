@@ -13,12 +13,12 @@
   --elevate-2: rgba(0, 0, 0, 0.08);
 
   /* Light mode — ForgeVibe */
-  --background: 220 30% 97%;
+  --background: 220 25% 94%;
   --foreground: 220 40% 8%;
-  --border: 220 20% 88%;
-  --card: 220 30% 99%;
+  --border: 220 20% 83%;
+  --card: 0 0% 100%;
   --card-foreground: 220 40% 8%;
-  --card-border: 220 20% 92%;
+  --card-border: 220 20% 86%;
   --sidebar: 220 25% 95%;
   --sidebar-foreground: 220 40% 8%;
   --sidebar-border: 220 20% 90%;
@@ -67,6 +67,19 @@
   --elevate-1: rgba(255, 255, 255, 0.03);
   --elevate-2: rgba(255, 255, 255, 0.07);
 
+  /* Light mode card elevation */
+  --card-shadow: 0 1px 4px rgba(11, 22, 40, 0.09), 0 1px 2px rgba(11, 22, 40, 0.05);
+}
+
+/* Light mode card elevated look */
+:root .card-elevated {
+  box-shadow: var(--card-shadow);
+}
+.dark .card-elevated {
+  box-shadow: none;
+}
+
+.dark {
   /* Dark mode — Deep navy ForgeVibe */
   --background: 218 55% 7%;
   --foreground: 210 20% 92%;

@@ -163,7 +163,7 @@ export default function FeedPost({ project, rank }: FeedPostProps) {
     <div
       data-testid={`card-project-${local.id}`}
       className={cn(
-        "rounded-2xl border bg-card overflow-hidden transition-all duration-300",
+        "rounded-2xl border bg-card overflow-hidden transition-all duration-300 card-elevated",
         local.diamondCount > 0 ? "diamond-glow-card" : "border-card-border"
       )}
     >

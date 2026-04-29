@@ -8,11 +8,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
   PlusCircle, Zap, Star, TrendingUp, TrendingDown, Layers, MessageSquare, FolderGit2,
+  Info, AlertTriangle,
 } from "lucide-react";
 import FeedPost, { FeedPostSkeleton } from "@/components/FeedPost";
 import ThoughtPost from "@/components/ThoughtPost";
 import PostComposer from "@/components/PostComposer";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -63,6 +65,40 @@ function TagStrip({
           {tag}
         </button>
       ))}
+    </div>
+  );
+}
+
+// ─── Sidebar mission card (replaces full-width hero) ─────────────────────────
+
+function SidebarMission() {
+  return (
+    <div className="rounded-xl border border-primary/20 bg-gradient-to-b from-primary/5 to-transparent p-4">
+      <h2 className="font-bold text-sm leading-tight mb-1.5">
+        Where great code{" "}
+        <span className="forgevibe-score">rises to the top</span>
+      </h2>
+      <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+        Submit your GitHub repo. <span className="text-foreground font-medium">Perplexity AI</span> analyzes
+        it live — architecture, security, code quality. Community votes. Best code earns diamonds.
+      </p>
+      <div className="space-y-2">
+        {[
+          { icon: "📦", label: "Submit repo URL" },
+          { icon: "🔍", label: "Perplexity scans live" },
+          { icon: "💎", label: "Community votes" },
+          { icon: "🏆", label: "Climb the leaderboard" },
+        ].map(({ icon, label }) => (
+          <div key={label} className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="text-sm shrink-0">{icon}</span>
+            {label}
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border/60 text-xs text-muted-foreground">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shrink-0" />
+        Powered by <span className="text-foreground font-medium ml-0.5">Perplexity AI</span>
+      </div>
     </div>
   );
 }
@@ -203,7 +239,7 @@ function FeedTab() {
       {/* ── Sidebar ── */}
       <aside className="w-64 shrink-0 hidden lg:flex flex-col gap-4 sticky top-20">
         {/* Diamond givers */}
-        <div className="rounded-xl border border-card-border bg-card p-4">
+        <div className="rounded-xl border border-card-border bg-card p-4 card-elevated">
           <h3 className="font-semibold text-sm mb-3 flex items-center gap-1.5">
             💎 Top Diamond Givers
           </h3>
@@ -236,6 +272,34 @@ function FeedTab() {
               Submit Project
             </Button>
           </Link>
+        </div>
+
+        {/* Mission / what is ForgeVibe */}
+        <SidebarMission />
+
+        {/* How points work */}
+        <div className="rounded-xl border border-card-border bg-card p-4 card-elevated">
+          <h3 className="font-semibold text-sm mb-3 flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 text-muted-foreground" /> How Scores Work
+          </h3>
+          <div className="space-y-2 text-xs">
+            {[
+              { icon: "💎", label: "Diamond", pts: "+50 pts each" },
+              { icon: "🤖", label: "AI Score", pts: "×40 multiplier" },
+              { icon: "⭐", label: "GitHub Star", pts: "+3 pts each" },
+              { icon: "❤️", label: "Like", pts: "+1 pt each" },
+            ].map(({ icon, label, pts }) => (
+              <div key={label} className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <span>{icon}</span> {label}
+                </span>
+                <span className="font-mono text-primary">{pts}</span>
+              </div>
+            ))}
+            <div className="mt-2 pt-2 border-t border-border text-muted-foreground leading-relaxed">
+              Diamonds from early supporters count the most — find winners before they blow up.
+            </div>
+          </div>
         </div>
       </aside>
     </div>
@@ -292,8 +356,20 @@ function LeaderboardTab() {
             <span className="text-4xl block mb-4">🏆</span>
             No projects in this period yet
           </div>
-        ) : (
-          entries.map((entry: any) => {
+        ) : (() => {
+          const allZero = entries.every((e: any) => !e.forgevibeScore || e.forgevibeScore === 0);
+          return (<>
+          {allZero && (
+            <div className="flex items-start gap-2.5 p-3 mb-3 rounded-xl border border-yellow-500/25 bg-yellow-500/5 text-xs text-yellow-400">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold">Scores are computing.</span>{" "}
+                Rankings update as projects earn diamonds, likes, and GitHub stars.
+                Give a diamond to a project you believe in — early supporters earn bonus rep!
+              </div>
+            </div>
+          )}
+          {entries.map((entry: any) => {
             const tags = (() => { try { return JSON.parse(entry.tags || "[]"); } catch { return []; } })();
             const hasDiamonds = entry.diamondCount > 0;
             const rankChange = entry.weeklyRankChange || 0;
@@ -386,8 +462,9 @@ function LeaderboardTab() {
                 </div>
               </div>
             );
-          })
-        )}
+          })}
+          </>);
+        })()}
       </div>
     </div>
   );

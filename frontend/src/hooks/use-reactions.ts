@@ -54,6 +54,8 @@ export function useReactions(
 
     const wasLiked = currentReaction !== null;
     const willLike = reaction !== null;
+    const prevReaction = currentReaction;
+    const prevCounts = counts;
 
     // Optimistic update
     setCurrentReaction(reaction);
@@ -69,10 +71,14 @@ export function useReactions(
     const result = await onLikeToggle();
     if (result) {
       setCounts(buildCounts(result.liked, result.likeCount, reaction));
+    } else {
+      // Auth failed or error — revert optimistic update
+      setCurrentReaction(prevReaction);
+      setCounts(prevCounts);
     }
 
     setIsReacting(false);
-  }, [currentReaction, isReacting, entityType, id, likeCount, onLikeToggle]);
+  }, [currentReaction, counts, isReacting, likeCount, onLikeToggle]);
 
   return { currentReaction, counts, handleReact, isReacting };
 }

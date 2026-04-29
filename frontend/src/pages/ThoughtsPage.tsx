@@ -3,33 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, CheckCircle, Clock, XCircle, Loader2 } from "lucide-react";
-import { Link } from "wouter";
-import { format, formatDistanceToNow } from "date-fns";
+import { Loader2, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
+import ThoughtPost from "@/components/ThoughtPost";
 
-function ConfidenceBadge({ confidence }: { confidence: number }) {
-  if (confidence >= 80) return (
-    <div className="flex items-center gap-1 text-green-400 text-xs font-mono">
-      <CheckCircle className="w-3 h-3" /> {confidence}% tech
-    </div>
-  );
-  if (confidence >= 50) return (
-    <div className="flex items-center gap-1 text-yellow-400 text-xs font-mono">
-      <AlertTriangle className="w-3 h-3" /> {confidence}% tech
-    </div>
-  );
-  return (
-    <div className="flex items-center gap-1 text-red-400 text-xs font-mono">
-      <XCircle className="w-3 h-3" /> {confidence}% tech
-    </div>
-  );
-}
 
 export default function ThoughtsPage() {
   const { user } = useAuth();
@@ -108,7 +89,7 @@ export default function ThoughtsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="text-xs text-muted-foreground flex items-center gap-1">
-                  <span>🤖</span> AI-validated
+                  <span>🔍</span> Perplexity-validated
                 </div>
                 <Button
                   onClick={handleSubmit}
@@ -181,33 +162,7 @@ export default function ThoughtsPage() {
           </div>
         ) : (
           posts.map((post: any) => (
-            <div key={post.id} className="rounded-xl border border-card-border bg-card p-4" data-testid={`card-thought-${post.id}`}>
-              <div className="flex gap-3">
-                <Avatar className="w-8 h-8 shrink-0">
-                  <AvatarImage src={post.user?.avatarUrl} />
-                  <AvatarFallback>{post.user?.username?.[0]}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      <Link href={`/users/${post.user?.username}`}>
-                        <span className="text-sm font-semibold hover:text-primary transition-colors">
-                          {post.user?.username}
-                          {post.user?.verified && <span className="ml-1 text-primary text-xs">✓</span>}
-                        </span>
-                      </Link>
-                      <span className="text-xs text-muted-foreground">
-                        {(() => { try { const s = post.createdAt; return formatDistanceToNow(new Date(s?.endsWith("Z") || s?.includes("+") ? s : s + "Z"), { addSuffix: true }); } catch { return ""; } })()}
-                      </span>
-                    </div>
-                    {post.aiConfidence !== null && post.aiConfidence !== undefined && (
-                      <ConfidenceBadge confidence={Math.round(post.aiConfidence)} />
-                    )}
-                  </div>
-                  <p className="text-sm leading-relaxed">{post.content}</p>
-                </div>
-              </div>
-            </div>
+            <ThoughtPost key={post.id} thought={post} />
           ))
         )}
       </div>

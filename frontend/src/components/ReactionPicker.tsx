@@ -137,10 +137,12 @@ export default function ReactionPicker({
         title={currentReaction ? "Double-tap to remove reaction" : "React"}
         className={cn(
           "w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-muted/50",
-          active ? active.color : "text-muted-foreground hover:text-green-400"
+          active ? active.color : "text-muted-foreground/50 hover:text-muted-foreground/80"
         )}
       >
-        <span className="text-base leading-none">{active ? active.emoji : "✅"}</span>
+        <span className={cn("text-base leading-none transition-opacity", !active && "opacity-30")}>
+          {active ? active.emoji : "✅"}
+        </span>
         <span>{active ? active.label : "Agree"}</span>
         {total > 0 && (
           <span className="text-xs font-mono opacity-70 ml-0.5">·{total}</span>

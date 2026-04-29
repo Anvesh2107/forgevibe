@@ -230,7 +230,7 @@ export default function ThoughtPost({ thought }: ThoughtPostProps) {
 
       <div
         data-testid={`card-thought-${local.id}`}
-        className="rounded-2xl border border-card-border bg-card overflow-hidden transition-all duration-300"
+        className="rounded-2xl border border-card-border bg-card overflow-hidden transition-all duration-300 card-elevated"
       >
         {/* ── Header ── */}
         <div className="flex items-start gap-3 px-4 pt-4 pb-3">
