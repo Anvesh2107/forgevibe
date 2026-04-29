@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, CheckCircle, XCircle, AlertTriangle, Flag } from "lucide-react";
+import { Shield, CheckCircle, XCircle, AlertTriangle, Flag, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -16,22 +16,26 @@ export default function AdminPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const { data: reports = [], isLoading } = useQuery<any[]>({
+  const { data: reports = [], isLoading, isError } = useQuery<any[]>({
     queryKey: ["/api/admin/reports", { status: "pending" }],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/admin/reports?status=pending");
+      if (!res.ok) throw new Error(`${res.status}`);
       return res.json();
     },
     enabled: !!user,
+    retry: false,
   });
 
   const { data: allReports = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/reports"],
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/admin/reports");
+      if (!res.ok) throw new Error(`${res.status}`);
       return res.json();
     },
-    enabled: !!user,
+    enabled: !!user && !isError,
+    retry: false,
   });
 
   const handleDecide = async (id: number, status: "approved" | "rejected") => {
@@ -40,7 +44,17 @@ export default function AdminPage() {
     toast({ title: status === "approved" ? "Report approved — content removed" : "Report rejected" });
   };
 
-  if (!user) return <div className="text-center py-20 text-muted-foreground">Sign in to access admin</div>;
+  if (!user) return (
+    <div className="text-center py-20 text-muted-foreground">Sign in to access admin</div>
+  );
+
+  if (isError) return (
+    <div className="text-center py-20">
+      <Lock className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-40" />
+      <p className="font-semibold text-muted-foreground">Access Denied</p>
+      <p className="text-xs text-muted-foreground mt-1">You need admin privileges to view this page.</p>
+    </div>
+  );
 
   const pending = reports.length;
   const approved = allReports.filter((r: any) => r.status === "approved").length;

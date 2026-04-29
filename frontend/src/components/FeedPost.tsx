@@ -208,8 +208,8 @@ export default function FeedPost({ project, rank }: FeedPostProps) {
           </div>
         </div>
 
-        {/* AI score */}
-        {local.aiScore !== null && local.aiScore !== undefined && (
+        {/* AI score — only show when actually analyzed */}
+        {local.aiScore > 0 && (
           <div className={cn(
             "shrink-0 text-xs font-mono font-bold px-2.5 py-1 rounded-full border",
             local.aiScore >= 85 ? "bg-green-500/10 text-green-400 border-green-500/20"
@@ -238,39 +238,72 @@ export default function FeedPost({ project, rank }: FeedPostProps) {
       )}
 
       {/* ── Project info ── */}
-      <div className="px-4 mb-3">
-        {/* Title row */}
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <Link href={`/projects/${local.id}`}>
-            <h2 className="font-bold text-base leading-tight hover:text-primary transition-colors cursor-pointer">
-              {local.name}
-            </h2>
-          </Link>
-          {local.githubUrl && (
-            <a href={local.githubUrl} target="_blank" rel="noopener noreferrer"
-               className="shrink-0 text-muted-foreground hover:text-foreground transition-colors mt-0.5">
-              {local.githubUrl.includes("github.com") ? <Github className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
-            </a>
-          )}
-        </div>
+      <div className="px-4 mb-3 space-y-2">
+        {/* Title */}
+        <Link href={`/projects/${local.id}`}>
+          <h2 className="font-bold text-lg leading-tight hover:text-primary transition-colors cursor-pointer">
+            {local.name}
+          </h2>
+        </Link>
 
-        {/* AI vibe check — shown instead of image when no cover */}
-        {!local.coverImageUrl && local.analysis?.vibeCheck && (
-          <p className="text-xs italic text-primary/70 mb-2 leading-relaxed">
-            "{local.analysis.vibeCheck}"
+        {/* GitHub repo chip — styled like a terminal path */}
+        {local.githubUrl?.includes("github.com") && (
+          <a
+            href={local.githubUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0d1117] border border-[#30363d] text-xs font-mono text-[#58a6ff] hover:border-[#58a6ff]/60 hover:bg-[#161b22] transition-all group max-w-full"
+          >
+            <Github className="w-3.5 h-3.5 text-[#8b949e] group-hover:text-[#58a6ff] shrink-0 transition-colors" />
+            <span className="truncate">
+              {(() => {
+                try {
+                  return new URL(local.githubUrl).pathname.replace(/^\//, "").replace(/\.git$/, "");
+                } catch { return local.githubUrl; }
+              })()}
+            </span>
+          </a>
+        )}
+
+        {/* Description — skip if identical to title */}
+        {local.description &&
+          local.description.trim().toLowerCase() !== (local.name || "").trim().toLowerCase() && (
+          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+            {local.description}
           </p>
         )}
-        {!local.coverImageUrl && (local.analysisStatus === "pending" || local.analysisStatus === "analyzing") && (
-          <p className="text-xs text-muted-foreground/60 mb-2 flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+
+        {/* AI vibe check */}
+        {local.analysis?.vibeCheck && (
+          <div className="border-l-2 border-primary/50 pl-3">
+            <p className="text-xs text-muted-foreground/80 italic leading-relaxed">
+              {local.analysis.vibeCheck}
+            </p>
+          </div>
+        )}
+
+        {/* Analyzing indicator */}
+        {(local.analysisStatus === "pending" || local.analysisStatus === "analyzing") && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
             AI analysis in progress…
-          </p>
+          </div>
         )}
 
-        {/* Description */}
-        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-2">
-          {local.description}
-        </p>
+        {/* External URL chip (non-GitHub links — e.g. Medium, blog, live site) */}
+        {local.githubUrl && !local.githubUrl.includes("github.com") && (
+          <a
+            href={local.githubUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/40 border border-border/50 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/70 hover:border-border transition-all max-w-full"
+          >
+            <Globe className="w-3 h-3 shrink-0" />
+            <span className="truncate">
+              {(() => { try { return new URL(local.githubUrl).hostname.replace(/^www\./, "") + new URL(local.githubUrl).pathname.replace(/\/$/, ""); } catch { return local.githubUrl; } })()}
+            </span>
+          </a>
+        )}
 
         {/* Tags */}
         {tags.length > 0 && (

@@ -105,19 +105,15 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Cover */}
-      <div className="relative rounded-xl overflow-hidden mb-6 bg-muted" style={{ aspectRatio: "21/9" }}>
-        {project.coverImageUrl ? (
+      {/* Cover — only render when there's an actual image */}
+      {project.coverImageUrl && (
+        <div className="relative rounded-xl overflow-hidden mb-6 bg-muted" style={{ aspectRatio: "21/9" }}>
           <img src={project.coverImageUrl} alt={project.name} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0f1e3d, #0B1628)" }}>
-            <span className="text-6xl opacity-20">⚡</span>
-          </div>
-        )}
-        {project.analysisStatus === "analyzing" && (
-          <div className="absolute inset-x-0 bottom-0 h-1 analyzing-gradient" />
-        )}
-      </div>
+          {project.analysisStatus === "analyzing" && (
+            <div className="absolute inset-x-0 bottom-0 h-1 analyzing-gradient" />
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main column */}
@@ -383,14 +379,19 @@ export default function ProjectDetailPage() {
             </div>
           )}
 
-          {/* GitHub Link */}
-          <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" className="w-full flex items-center gap-2">
-              <Github className="w-4 h-4" />
-              View on GitHub
-              <ExternalLink className="w-3 h-3 ml-auto" />
-            </Button>
-          </a>
+          {/* Project link */}
+          {project.githubUrl && (
+            <a href={project.githubUrl} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="w-full flex items-center gap-2">
+                {project.githubUrl.includes("github.com") ? (
+                  <><Github className="w-4 h-4" />View on GitHub</>
+                ) : (
+                  <><Globe className="w-4 h-4" />Visit Live Project</>
+                )}
+                <ExternalLink className="w-3 h-3 ml-auto" />
+              </Button>
+            </a>
+          )}
         </div>
       </div>
     </div>

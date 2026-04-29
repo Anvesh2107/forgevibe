@@ -104,7 +104,7 @@ export default function NotificationsPage() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{body}</p>
                   <p className="text-xs text-muted-foreground/60 mt-1 font-mono">
-                    {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                    {(() => { try { const s = n.createdAt; return formatDistanceToNow(new Date(s?.endsWith("Z") || s?.includes("+") ? s : s + "Z"), { addSuffix: true }); } catch { return ""; } })()}
                   </p>
                 </div>
               </div>

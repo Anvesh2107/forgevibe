@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Github, Star, Users, BookOpen, Zap, Trophy, MessageSquare } from "lucide-react";
+import { Github, Star, Users, BookOpen, Zap, MessageSquare, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import ProjectCard from "@/components/ProjectCard";
 import { apiRequest } from "@/lib/queryClient";
@@ -25,6 +25,16 @@ export default function UserProfilePage() {
     queryKey: [`/api/users/${username}/projects`],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/users/${username}/projects`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  const { data: userThoughts = [] } = useQuery<any[]>({
+    queryKey: [`/api/users/${username}/thoughts`],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/users/${username}/thoughts`);
       if (!res.ok) return [];
       return res.json();
     },
@@ -128,7 +138,7 @@ export default function UserProfilePage() {
         {/* ── Stats row ── */}
         <div className="grid grid-cols-4 gap-3 mt-5">
           {[
-            { icon: <Zap className="w-4 h-4 text-yellow-400" />, value: user.forgeScore ?? 0, label: "ForgeScore" },
+            { icon: <Zap className="w-4 h-4 text-yellow-400" />, value: user.forgeScore ?? 0, label: "ForgeVibe Score" },
             { icon: <span className="text-base">💎</span>, value: totalDiamonds, label: "Diamonds" },
             { icon: <Star className="w-4 h-4 text-yellow-300" />, value: user.stars ?? 0, label: "Stars" },
             { icon: <span className="text-base">❤️</span>, value: userProjects.length, label: "Projects" },
@@ -142,11 +152,15 @@ export default function UserProfilePage() {
         </div>
       </div>
 
-      {/* ── Projects tab ── */}
+      {/* ── Tabs ── */}
       <Tabs defaultValue="projects">
         <TabsList className="mb-4">
           <TabsTrigger value="projects">
             Projects <span className="ml-1.5 text-xs text-muted-foreground">({userProjects.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="thoughts">
+            <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
+            Thoughts <span className="ml-1.5 text-xs text-muted-foreground">({userThoughts.length})</span>
           </TabsTrigger>
         </TabsList>
 
@@ -162,6 +176,48 @@ export default function UserProfilePage() {
               {userProjects.map((p: any) => (
                 <ProjectCard key={p.id} project={p} />
               ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="thoughts">
+          {userThoughts.length === 0 ? (
+            <div className="rounded-2xl border border-card-border bg-card p-12 text-center">
+              <div className="text-3xl mb-2">💬</div>
+              <p className="text-sm font-medium">No thoughts yet</p>
+              <p className="text-xs text-muted-foreground mt-1">{displayName} hasn't posted any thoughts.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {userThoughts.map((post: any) => {
+                const timeAgo = (() => {
+                  try {
+                    const s = post.createdAt;
+                    const d = new Date(s?.endsWith("Z") || s?.includes("+") ? s : s + "Z");
+                    return formatDistanceToNow(d, { addSuffix: true });
+                  } catch { return ""; }
+                })();
+                return (
+                  <div key={post.id} className="rounded-xl border border-card-border bg-card p-4">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-xs text-muted-foreground">{timeAgo}</span>
+                      {post.aiConfidence != null && (
+                        <span className={`flex items-center gap-1 text-xs font-mono ${post.aiConfidence >= 80 ? "text-green-400" : post.aiConfidence >= 50 ? "text-yellow-400" : "text-red-400"}`}>
+                          {post.aiConfidence >= 80 ? <CheckCircle className="w-3 h-3" /> : post.aiConfidence >= 50 ? <AlertTriangle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                          {Math.round(post.aiConfidence)}% tech
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm leading-relaxed">{post.content}</p>
+                    {(post.likeCount > 0 || post.commentCount > 0) && (
+                      <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+                        {post.likeCount > 0 && <span>❤️ {post.likeCount}</span>}
+                        {post.commentCount > 0 && <span>💬 {post.commentCount}</span>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </TabsContent>

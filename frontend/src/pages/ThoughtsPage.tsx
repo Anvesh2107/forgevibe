@@ -197,7 +197,7 @@ export default function ThoughtsPage() {
                         </span>
                       </Link>
                       <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                        {(() => { try { const s = post.createdAt; return formatDistanceToNow(new Date(s?.endsWith("Z") || s?.includes("+") ? s : s + "Z"), { addSuffix: true }); } catch { return ""; } })()}
                       </span>
                     </div>
                     {post.aiConfidence !== null && post.aiConfidence !== undefined && (

@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await apiRequest("POST", "/api/auth/logout", {});
-    await refetch();
+    queryClient.setQueryData(["/api/auth/me"], null);
     queryClient.invalidateQueries();
   };
 

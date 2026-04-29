@@ -2,10 +2,12 @@ package com.forgevibe.controller;
 
 import com.forgevibe.dto.response.LeaderboardEntry;
 import com.forgevibe.dto.response.ProjectResponse;
+import com.forgevibe.dto.response.ThoughtResponse;
 import com.forgevibe.dto.response.UserResponse;
 import com.forgevibe.entity.User;
 import com.forgevibe.security.SessionUser;
 import com.forgevibe.service.ProjectService;
+import com.forgevibe.service.ThoughtService;
 import com.forgevibe.service.UserService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ public class UserController {
 
     private final UserService userService;
     private final ProjectService projectService;
+    private final ThoughtService thoughtService;
     private final SessionUser sessionUser;
 
     /** GET /api/users/:identifier — accepts numeric id OR username */
@@ -46,6 +49,16 @@ public class UserController {
         Long viewerId = sessionUser.getUserId(session);
         User viewer = viewerId != null ? userService.getById(viewerId) : null;
         return ResponseEntity.ok(projectService.getByAuthorId(profileUser.getId(), viewer));
+    }
+
+    /** GET /api/users/:username/thoughts */
+    @GetMapping("/api/users/{username}/thoughts")
+    public ResponseEntity<List<ThoughtResponse>> getUserThoughts(
+            @PathVariable String username, HttpSession session) {
+        User profileUser = userService.getByUsername(username);
+        Long viewerId = sessionUser.getUserId(session);
+        User viewer = viewerId != null ? userService.getById(viewerId) : null;
+        return ResponseEntity.ok(thoughtService.getByAuthorId(profileUser.getId(), viewer));
     }
 
     /** GET /api/users/:username/diamonds-given */

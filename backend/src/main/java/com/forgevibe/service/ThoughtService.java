@@ -60,6 +60,14 @@ public class ThoughtService {
                 .toList();
     }
 
+    public List<ThoughtResponse> getByAuthorId(Long authorId, User viewer) {
+        return thoughtRepo.findByAuthorIdOrderByCreatedAtDesc(authorId)
+                .stream()
+                .filter(p -> "published".equals(p.getStatus()))
+                .map(p -> toResponse(p, viewer))
+                .toList();
+    }
+
     public ThoughtResponse react(Long thoughtId, String reactionType, User user) {
         ThoughtPost post = thoughtRepo.findById(thoughtId)
                 .orElseThrow(() -> new RuntimeException("Thought not found"));
