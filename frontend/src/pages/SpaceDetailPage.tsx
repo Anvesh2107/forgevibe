@@ -390,8 +390,8 @@ export default function SpaceDetailPage() {
           </div>
 
           {/* Basic info */}
-          <div className="grid grid-cols-[1fr_auto] gap-3">
-            <div className="space-y-1">
+          <div className="flex gap-3">
+            <div className="flex-1 space-y-1 min-w-0">
               <label className="text-xs text-muted-foreground font-medium">Name</label>
               <input
                 value={settingsName}
@@ -404,7 +404,7 @@ export default function SpaceDetailPage() {
               <input
                 value={settingsEmoji}
                 onChange={e => setSettingsEmoji(e.target.value)}
-                className="w-16 bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm text-center focus:outline-none focus:border-primary/50"
+                className="w-20 bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm text-center focus:outline-none focus:border-primary/50"
               />
             </div>
           </div>
@@ -428,13 +428,13 @@ export default function SpaceDetailPage() {
               <button
                 onClick={() => setSettingsPaid(v => !v)}
                 className={cn(
-                  "relative w-11 h-6 rounded-full transition-colors",
+                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none",
                   settingsPaid ? "bg-primary" : "bg-muted-foreground/30"
                 )}
               >
                 <span className={cn(
-                  "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm",
-                  settingsPaid ? "translate-x-6" : "translate-x-1"
+                  "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform duration-200",
+                  settingsPaid ? "translate-x-5" : "translate-x-0"
                 )} />
               </button>
             </div>
