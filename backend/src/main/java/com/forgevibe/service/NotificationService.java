@@ -42,6 +42,15 @@ public class NotificationService {
         notificationRepo.markAllReadForUser(userId);
     }
 
+    public void markOneRead(Long notificationId, Long userId) {
+        notificationRepo.findById(notificationId).ifPresent(n -> {
+            if (userId != null && userId.equals(n.getUser().getId())) {
+                n.setRead(true);
+                notificationRepo.save(n);
+            }
+        });
+    }
+
     private String buildJson(Map<String, Object> map) {
         try { return objectMapper.writeValueAsString(map != null ? map : java.util.Map.of()); }
         catch (Exception e) { return "{}"; }

@@ -89,11 +89,23 @@ export default function NotificationsPage() {
         <div className="space-y-2">
           {notifications.map((n: any) => {
             const { title, body, href } = notificationText(n);
+
+            const handleClick = async () => {
+              if (!n.read) {
+                await apiRequest("POST", `/api/notifications/${n.id}/read`, {});
+                queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+              }
+            };
+
             const content = (
-              <div className={cn(
-                "flex gap-3 p-4 rounded-xl border transition-colors",
-                n.read ? "border-card-border bg-card" : "border-primary/20 bg-primary/5"
-              )} data-testid={`notification-${n.id}`}>
+              <div
+                onClick={handleClick}
+                className={cn(
+                  "flex gap-3 p-4 rounded-xl border transition-colors cursor-pointer",
+                  n.read ? "border-card-border bg-card hover:bg-muted/30" : "border-primary/20 bg-primary/5 hover:bg-primary/10"
+                )}
+                data-testid={`notification-${n.id}`}
+              >
                 <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
                   {NOTIFICATION_ICONS[n.type] || <Bell className="w-4 h-4" />}
                 </div>

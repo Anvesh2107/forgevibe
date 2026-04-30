@@ -84,7 +84,12 @@ export default function ProjectDetailPage() {
     </div>
   );
 
-  if (!project) return <div className="text-center py-20"><p>Project not found</p></div>;
+  if (!project) return (
+    <div className="text-center py-20 text-muted-foreground">
+      <p className="font-medium text-foreground mb-2">Project not found</p>
+      <Link href="/"><Button variant="link" className="mt-1">← Back to Feed</Button></Link>
+    </div>
+  );
 
   const tags = (() => { try { return JSON.parse(project.tags || "[]"); } catch { return []; } })();
   const analysis = project.analysis;
@@ -428,7 +433,7 @@ export default function ProjectDetailPage() {
               {project.aiScore && (
                 <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">🤖 AI Score</span>
-                  <span className="font-mono">{Math.round(project.aiScore)} ×40 = {Math.round(project.aiScore * 40)}</span>
+                  <span className="font-mono">{Math.round(project.aiScore)} ×0.4 = {Math.round(project.aiScore * 0.4)}</span>
                 </div>
               )}
             </div>

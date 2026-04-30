@@ -45,4 +45,12 @@ public class NotificationController {
         if (userId != null) notificationService.markAllRead(userId);
         return ResponseEntity.ok().build();
     }
+
+    /** POST /api/notifications/{id}/read */
+    @PostMapping("/{id}/read")
+    public ResponseEntity<Void> markOneRead(@PathVariable Long id, HttpSession session) {
+        Long userId = sessionUser.getUserId(session);
+        if (userId != null) notificationService.markOneRead(id, userId);
+        return ResponseEntity.ok().build();
+    }
 }
