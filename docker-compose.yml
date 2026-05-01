@@ -4,6 +4,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: forgevibe-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: forgevibe
       POSTGRES_USER: forgevibe
@@ -27,6 +28,7 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
     container_name: forgevibe-zookeeper
+    restart: unless-stopped
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -47,6 +49,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.6.0
     container_name: forgevibe-kafka
+    restart: unless-stopped
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -73,6 +76,7 @@ services:
   kafka-ui:
     image: obsidiandynamics/kafdrop:latest
     container_name: forgevibe-kafka-ui
+    restart: unless-stopped
     depends_on:
       kafka:
         condition: service_healthy
@@ -93,6 +97,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: forgevibe-backend
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
@@ -127,6 +132,7 @@ services:
       context: ./ai-worker
       dockerfile: Dockerfile
     container_name: forgevibe-ai-worker
+    restart: unless-stopped
     depends_on:
       kafka:
         condition: service_healthy
@@ -146,6 +152,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: forgevibe-frontend
+    restart: unless-stopped
     logging:
       driver: "json-file"
       options:
@@ -156,6 +163,7 @@ services:
   nginx:
     image: nginx:alpine
     container_name: forgevibe-nginx
+    restart: unless-stopped
     depends_on:
       frontend:
         condition: service_started
