@@ -8,8 +8,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
   PlusCircle, Zap, Star, TrendingUp, TrendingDown, Layers, MessageSquare, FolderGit2,
-  Info, AlertTriangle,
+  Info, AlertTriangle, Share2, Twitter, Link2,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 import FeedPost, { FeedPostSkeleton } from "@/components/FeedPost";
 import ThoughtPost from "@/components/ThoughtPost";
 import PostComposer from "@/components/PostComposer";
@@ -311,6 +315,7 @@ function FeedTab() {
 function LeaderboardTab() {
   const [period, setPeriod] = useState("weekly");
   const [lbTag, setLbTag] = useState("All");
+  const { toast } = useToast();
 
   const { data: entries = [], isLoading } = useQuery<any[]>({
     queryKey: [
@@ -373,6 +378,10 @@ function LeaderboardTab() {
             const tags = (() => { try { return JSON.parse(entry.tags || "[]"); } catch { return []; } })();
             const hasDiamonds = entry.diamondCount > 0;
             const rankChange = entry.weeklyRankChange || 0;
+            const periodLabel = period === "weekly" ? "this week" : period === "monthly" ? "this month" : "of all time";
+            const shareText = entry.rank === 1
+              ? `🏆 "${entry.name}" by @${entry.user?.username} is #1 on ForgeVibe ${periodLabel}! 🔥\n${window.location.origin}/projects/${entry.id}`
+              : `🚀 "${entry.name}" by @${entry.user?.username} is #${entry.rank} on ForgeVibe ${periodLabel}!\n${window.location.origin}/projects/${entry.id}`;
 
             return (
               <div
@@ -459,6 +468,37 @@ function LeaderboardTab() {
                     </div>
                     <div className="text-xs text-muted-foreground">pts</div>
                   </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className={cn(
+                        "flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg transition-all shrink-0",
+                        entry.rank === 1
+                          ? "bg-yellow-500/15 text-yellow-300 hover:bg-yellow-500/25"
+                          : "bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                      )}>
+                        {entry.rank === 1 ? "🏆" : <Share2 className="w-3 h-3" />}
+                        <span>#{entry.rank}</span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem
+                        className="gap-2 cursor-pointer"
+                        onClick={() => window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`, "_blank")}
+                      >
+                        <Twitter className="w-4 h-4" /> Share on X
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="gap-2 cursor-pointer"
+                        onClick={() => {
+                          navigator.clipboard.writeText(shareText);
+                          toast({ title: "Copied to clipboard!" });
+                        }}
+                      >
+                        <Link2 className="w-4 h-4" /> Copy link
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             );
