@@ -1,6 +1,5 @@
 package com.forgevibe.controller;
 
-import com.forgevibe.dto.response.LeaderboardEntry;
 import com.forgevibe.dto.response.ProjectResponse;
 import com.forgevibe.dto.response.SpaceResponse;
 import com.forgevibe.dto.response.ThoughtResponse;
@@ -80,11 +79,11 @@ public class UserController {
         return ResponseEntity.ok(List.of());
     }
 
-    /** GET /api/leaderboard?period=all|monthly */
+    /** GET /api/leaderboard?period=weekly|monthly|alltime */
     @GetMapping("/api/leaderboard")
-    public ResponseEntity<List<LeaderboardEntry>> leaderboard(
-            @RequestParam(defaultValue = "all") String period) {
-        return ResponseEntity.ok(userService.getLeaderboard(period));
+    public ResponseEntity<List<ProjectResponse>> leaderboard(
+            @RequestParam(defaultValue = "alltime") String period) {
+        return ResponseEntity.ok(projectService.getLeaderboard(period));
     }
 
     /** GET /api/diamond-givers */

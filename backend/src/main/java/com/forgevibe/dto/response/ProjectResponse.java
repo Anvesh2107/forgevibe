@@ -38,6 +38,8 @@ public class ProjectResponse {
     private Double forgevibeScore;
     private String coverImageUrl;
     private String analysisStatus;
+    private Integer rank;
+    private Integer weeklyRankChange;
     private List<DiamondGiverDto> diamondGivers;
 
     // Rich AI analysis object (null until analyzed)

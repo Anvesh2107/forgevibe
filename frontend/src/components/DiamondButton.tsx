@@ -94,7 +94,7 @@ export default function DiamondButton({ project, onSuccess, feedMode = false }: 
           <span className={cn("text-base leading-none", isDiamondActive && "diamond-give-anim")}>
             {isDiamondActive ? "💎" : "♦"}
           </span>
-          {isDiamondActive ? "Diamonded" : "Diamond"}
+          Diamond
         </button>
 
         <Dialog open={isOpen} onOpenChange={setIsOpen}>

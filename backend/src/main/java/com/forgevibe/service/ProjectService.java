@@ -17,11 +17,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
@@ -356,5 +358,18 @@ public class ProjectService {
                 .analysis(analysisDto)
                 .diamondGivers(diamondGivers)
                 .build();
+    }
+
+    public List<ProjectResponse> getLeaderboard(String period) {
+        List<ProjectResponse> responses = projectRepo.findAllByOrderByCreatedAtDesc().stream()
+                .map(p -> toResponse(p, null))
+                .sorted(Comparator.comparingDouble((ProjectResponse r) ->
+                        r.getForgevibeScore() != null ? r.getForgevibeScore() : 0.0).reversed())
+                .collect(Collectors.toList());
+        IntStream.range(0, responses.size()).forEach(i -> {
+            responses.get(i).setRank(i + 1);
+            responses.get(i).setWeeklyRankChange(0);
+        });
+        return responses;
     }
 }
