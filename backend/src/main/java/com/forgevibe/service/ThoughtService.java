@@ -109,6 +109,17 @@ public class ThoughtService {
     }
 
     @Transactional
+    public void deleteThought(Long thoughtId, User user) {
+        ThoughtPost post = thoughtRepo.findById(thoughtId)
+                .orElseThrow(() -> new RuntimeException("Thought not found"));
+        if (!post.getAuthor().getId().equals(user.getId()))
+            throw new RuntimeException("NOT_OWNER");
+        likeRepo.deleteByContentTypeAndContentId("thought", thoughtId);
+        commentRepo.deleteByContentTypeAndContentId("thought", thoughtId);
+        thoughtRepo.delete(post);
+    }
+
+    @Transactional
     public void appeal(Long thoughtId, String message, User user) {
         ThoughtPost post = thoughtRepo.findById(thoughtId)
                 .orElseThrow(() -> new RuntimeException("Thought not found"));

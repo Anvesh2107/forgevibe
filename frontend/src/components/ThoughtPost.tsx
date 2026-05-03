@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle, AlertTriangle, XCircle, Flag, MoreHorizontal, Share2, Twitter, Linkedin, Link2 } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle, Flag, MoreHorizontal, Share2, Twitter, Linkedin, Link2, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -223,6 +223,22 @@ export default function ThoughtPost({ thought }: ThoughtPostProps) {
 
   const displayed = showAllComments ? threads : threads.slice(0, 2);
   const isOwn = user && local.user?.username === user.username;
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await apiRequest("DELETE", `/api/thoughts/${local.id}`);
+      queryClient.setQueryData(["/api/thoughts"], (old: any[] = []) => old.filter((t: any) => t.id !== local.id));
+      queryClient.invalidateQueries({ queryKey: ["/api/thoughts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/feed"] });
+      toast({ title: "Post deleted" });
+    } catch {
+      toast({ title: "Failed to delete post", variant: "destructive" });
+    }
+    setIsDeleting(false);
+  };
 
   return (
     <>
@@ -256,14 +272,30 @@ export default function ThoughtPost({ thought }: ThoughtPostProps) {
             {local.aiConfidence !== null && local.aiConfidence !== undefined && (
               <ConfidenceBadge confidence={Math.round(local.aiConfidence)} />
             )}
-            {!isOwn && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenu onOpenChange={open => { if (!open) setConfirmDelete(false); }}>
+              <DropdownMenuTrigger asChild>
+                <button className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors">
+                  <MoreHorizontal className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {isOwn ? (
+                  <DropdownMenuItem
+                    className="text-red-400 focus:text-red-300 focus:bg-red-500/10 gap-2"
+                    disabled={isDeleting}
+                    onSelect={e => {
+                      if (!confirmDelete) {
+                        e.preventDefault();
+                        setConfirmDelete(true);
+                        return;
+                      }
+                      handleDelete();
+                    }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    {confirmDelete ? "Confirm delete?" : "Delete post"}
+                  </DropdownMenuItem>
+                ) : (
                   <DropdownMenuItem
                     className="text-red-400 focus:text-red-300 focus:bg-red-500/10 gap-2"
                     onClick={() => {
@@ -273,9 +305,9 @@ export default function ThoughtPost({ thought }: ThoughtPostProps) {
                   >
                     <Flag className="w-3.5 h-3.5" /> Flag this post
                   </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

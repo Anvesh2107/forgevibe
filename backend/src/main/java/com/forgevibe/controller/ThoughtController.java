@@ -95,4 +95,11 @@ public class ThoughtController {
             HttpSession session) {
         return ResponseEntity.ok(commentService.addComment("thought", id, req, requireUser(session)));
     }
+
+    /** DELETE /api/thoughts/:id */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id, HttpSession session) {
+        thoughtService.deleteThought(id, requireUser(session));
+        return ResponseEntity.noContent().build();
+    }
 }
