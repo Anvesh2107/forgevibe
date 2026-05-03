@@ -30,7 +30,7 @@ public class FeedService {
         List<FeedItemResponse> items = new ArrayList<>();
         boolean tagged = tag != null && !tag.isBlank();
 
-        if (!"projects".equals(filter)) {
+        if (!"projects".equals(filter) && !tagged) {
             thoughtRepo.findByStatusOrderByCreatedAtDesc("published")
                     .forEach(t -> items.add(FeedItemResponse.builder()
                             .type("thought")

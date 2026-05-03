@@ -63,12 +63,11 @@ public class AiValidationService {
             "security", "auth", "oauth", "jwt", "encryption", "vulnerability", "pen test",
             // General engineering
             "open source", "git", "algorithm", "data structure", "complexity",
-            "refactor", "test", "unit test", "integration", "readme", "docs",
-            "documentation", "startup", "saas", "platform", "mvp", "build", "launch",
-            "project", "tool", "hack", "product", "app",
+            "refactor", "unit test", "integration test", "readme", "docs",
+            "documentation", "startup", "saas", "mvp", "launch",
             // Builder / opinion / discussion signals
-            "productivity", "engineering", "technic", "automation", "autonomy",
-            "builder", "ship", "debugging", "deploy", "system design", "tech debt",
+            "productivity", "software engineering", "technic", "automation", "autonomy",
+            "builder", "ship it", "debugging", "system design", "tech debt",
             "feature flag", "rollout", "migration", "abstraction", "tradeoff"
     );
 
@@ -169,23 +168,25 @@ public class AiValidationService {
                         "Content appears to be spam or promotional material.");
             }
         }
-        if (content.trim().split("\\s+").length < 5) {
-            return new ValidationResult(40, "blocked",
-                    "Post is too short to be meaningful. Add more context.");
+        if (content.trim().split("\\s+").length < 8) {
+            return new ValidationResult(25, "blocked",
+                    "Post is too short. Write at least 8 words with a specific technical insight.");
         }
-        long techHits = TECH_KEYWORDS.stream().filter(lower::contains).count();
-        // 1 keyword hit → ~65, 2 hits → ~72, 3+ → 80+
-        int base = (int) Math.min(95, 55 + techHits * 8);
-        int confidence = Math.max(0, Math.min(100, base + new Random().nextInt(7) - 3));
-        // Publish at 60+ to allow discussion/opinion posts about tech topics
-        String status = confidence >= 60 ? "published" : confidence >= 35 ? "needs_context" : "blocked";
+        long techHits = TECH_KEYWORDS.stream()
+                .filter(kw -> kw.length() <= 2
+                        ? java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(kw) + "\\b").matcher(lower).find()
+                        : lower.contains(kw))
+                .count();
+        if (techHits == 0) {
+            return new ValidationResult(30, "blocked",
+                    "No tech-relevant content detected. Share a specific technical insight or question.");
+        }
+        // 1 hit → 63 (needs_context), 2 → 71 (needs_context), 3 → 79 (published), 4+ → 87+
+        int confidence = (int) Math.min(95, 55 + techHits * 8);
+        String status = confidence >= 75 ? "published" : "needs_context";
         String reason = confidence >= 75
                 ? "Solid tech content — great take for the community."
-                : confidence >= 60
-                ? "Tech-relevant post. Approved for the feed."
-                : confidence >= 35
-                ? "Partially relevant — add more technical context."
-                : "Content doesn't appear to be tech-related.";
+                : "Some technical relevance detected, but add more specific technical context.";
         return new ValidationResult(confidence, status, reason);
     }
 
@@ -276,30 +277,30 @@ public class AiValidationService {
     private ValidationResult validateThoughtWithOpenAi(String content) {
         try {
             String systemPrompt = """
-                You are a content moderation AI for ForgeVibe, a platform for software builders and tech enthusiasts.
-                Evaluate whether the submitted post belongs on a tech community feed.
+                You are a strict content moderation AI for ForgeVibe, a platform for software engineers and tech builders.
+                Evaluate whether the submitted post contains a real technical insight worth sharing.
 
-                APPROVE (score 55-100) if the post is:
-                - A technical insight, opinion, or take on software engineering, AI, or developer tools
-                - A discussion question about tech trends, architecture, or engineering tradeoffs
-                - A builder update, project launch, or dev experience story
-                - Commentary on AI tools, LLMs, agentic systems, or the future of software
-                - A question, hot take, or casual observation from a developer or builder
-                - Someone sharing a link, resource, or project they built or found useful
-                - Even loosely tech-related posts from the builder community are welcome
+                APPROVE (score 70-100) ONLY if the post clearly:
+                - Shares a specific technical insight, lesson, or opinion about software engineering, AI, or developer tools
+                - Asks a meaningful technical question with enough context
+                - Describes a concrete builder experience, architecture decision, or tradeoff
+                - Discusses a specific technology, tool, framework, or system
 
-                NEEDS CONTEXT (score 35-54) if the post is very vague with no tech signal at all.
+                NEEDS CONTEXT (score 35-69) if the post has some tech signal but is too vague, too short, or lacks specifics.
 
-                BLOCK (score 0-34) only for clear spam, NSFW content, or completely off-topic posts (no tech connection whatsoever).
+                BLOCK (score 0-34) for:
+                - Greetings, generic check-ins, or casual social posts with no tech content ("hello", "good morning", "how is everyone")
+                - Spam, NSFW, or completely off-topic content
+                - Posts that mention tech words but have no actual technical substance
 
                 Respond with ONLY a JSON object:
                 {"confidence": <0-100>, "reason": "<short explanation>"}
                 """;
             String response = callOpenAi(systemPrompt, "Evaluate this post:\n" + content, 150);
             JsonNode result = parseJsonFromResponse(response);
-            int confidence = result.path("confidence").asInt(65);
+            int confidence = result.path("confidence").asInt(0);
             String reason = result.path("reason").asText("No reason provided.");
-            String status = confidence >= 55 ? "published" : confidence >= 35 ? "needs_context" : "blocked";
+            String status = confidence >= 70 ? "published" : confidence >= 35 ? "needs_context" : "blocked";
             return new ValidationResult(confidence, status, reason);
         } catch (Exception e) {
             log.error("[OpenAI] Thought validation failed, falling back to mock: {}", e.getMessage());

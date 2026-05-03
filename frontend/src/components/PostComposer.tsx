@@ -43,6 +43,7 @@ export default function PostComposer({ onPosted }: { onPosted?: () => void }) {
   const [isAppealing, setIsAppealing] = useState(false);
   const [appealNote, setAppealNote] = useState("");
   const [showAppealInput, setShowAppealInput] = useState(false);
+  const [ideaAttempted, setIdeaAttempted] = useState(false);
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm({
     defaultValues: { githubUrl: "", name: "", description: "" },
@@ -80,10 +81,18 @@ export default function PostComposer({ onPosted }: { onPosted?: () => void }) {
   // ── Submit a thought / idea ────────────────────────────────────────────────
   const onSubmitIdea = async () => {
     if (!ideaText.trim()) return;
+    if (ideaText.trim().length < 10) { setIdeaAttempted(true); return; }
+    setIdeaAttempted(false);
     setIsSubmitting(true);
     setThoughtResult(null);
     try {
       const res = await apiRequest("POST", "/api/thoughts", { content: ideaText.trim() });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        toast({ title: err?.error || "Submission failed", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
       const initial = await res.json();
 
       // Backend saves as "pending" and hands off to AI worker via Kafka.
@@ -130,7 +139,7 @@ export default function PostComposer({ onPosted }: { onPosted?: () => void }) {
   const onAppeal = async (thoughtId: number) => {
     setIsAppealing(true);
     try {
-      const res = await apiRequest("POST", `/api/thoughts/${thoughtId}/appeal`, { notes: appealNote.trim() });
+      const res = await apiRequest("POST", `/api/thoughts/${thoughtId}/appeal`, { message: appealNote.trim() });
       const data = await res.json();
       if (data.ok) {
         setThoughtResult({ kind: "appeal_sent" });
@@ -346,7 +355,7 @@ export default function PostComposer({ onPosted }: { onPosted?: () => void }) {
                     <CheckCircle className="w-5 h-5 text-amber-400 shrink-0" />
                     <p className="text-sm font-semibold text-amber-300">Appeal submitted</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">Our moderators will manually review your post. We'll update you on the outcome.</p>
+                  <p className="text-xs text-muted-foreground">Your appeal has been received. We'll review it and get back to you within 24–48 hours.</p>
                   <Button size="sm" variant="outline" className="w-full mt-1" onClick={closeAndReset}>
                     Close
                   </Button>
@@ -365,9 +374,15 @@ export default function PostComposer({ onPosted }: { onPosted?: () => void }) {
                       placeholder="e.g. Why I think monoliths are making a comeback, or what I learned building a distributed cache..."
                       rows={5}
                       value={ideaText}
-                      onChange={e => setIdeaText(e.target.value.substring(0, 2000))}
+                      onChange={e => { setIdeaText(e.target.value.substring(0, 2000)); setIdeaAttempted(false); }}
+                      className={cn(ideaAttempted && ideaText.trim().length < 10 ? "border-yellow-500/60 focus-visible:ring-yellow-500/40" : "")}
                       data-testid="composer-thought"
                     />
+                    {ideaAttempted && ideaText.trim().length < 10 && (
+                      <p className="text-xs text-yellow-500">
+                        At least 10 characters needed ({10 - ideaText.trim().length} more to go)
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" className="flex-1" onClick={closeAndReset}>

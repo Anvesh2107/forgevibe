@@ -16,10 +16,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidation(MethodArgumentNotValidException ex) {
-        String errors = ex.getBindingResult().getFieldErrors().stream()
-                .map(e -> e.getField() + ": " + e.getDefaultMessage())
+        String error = ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> {
+                    if ("content".equals(e.getField()) && "Size".equals(e.getCode())) {
+                        return "Post must be between 10 and 2000 characters.";
+                    }
+                    return e.getDefaultMessage();
+                })
                 .collect(Collectors.joining(", "));
-        return ResponseEntity.badRequest().body(Map.of("error", errors));
+        return ResponseEntity.badRequest().body(Map.of("error", error));
     }
 
     @ExceptionHandler(RuntimeException.class)

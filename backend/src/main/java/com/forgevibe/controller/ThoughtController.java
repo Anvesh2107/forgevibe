@@ -38,8 +38,12 @@ public class ThoughtController {
 
     /** POST /api/thoughts */
     @PostMapping
-    public ResponseEntity<ThoughtResponse> submit(@Valid @RequestBody ThoughtRequest req, HttpSession session) {
-        return ResponseEntity.ok(thoughtService.submit(req, requireUser(session)));
+    public ResponseEntity<?> submit(@Valid @RequestBody ThoughtRequest req, HttpSession session) {
+        try {
+            return ResponseEntity.ok(thoughtService.submit(req, requireUser(session)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     /** GET /api/thoughts */

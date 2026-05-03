@@ -56,6 +56,18 @@ spring:
     jdbc:
       initialize-schema: always
 
+  mail:
+    host: smtp.zoho.com
+    port: 587
+    username: hello@forgevibeapp.com
+    password: ${ZOHO_SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
 server:
   port: 8080
   servlet:
@@ -68,6 +80,7 @@ server:
 app:
   frontend-url: ${APP_BASE_URL:http://localhost:3000}
   demo-login-enabled: ${APP_DEMO_LOGIN_ENABLED:true}
+  contact-email: hello@forgevibeapp.com
 
 logging:
   level:

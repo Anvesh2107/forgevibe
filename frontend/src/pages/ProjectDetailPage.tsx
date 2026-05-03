@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { ExternalLink, Heart, MessageSquare, Star, Github, Globe, Cpu, Shield, Code2, BookOpen, AlertTriangle, Pencil, Trash2, Loader2 } from "lucide-react";
+import { ExternalLink, Heart, MessageSquare, Star, Github, Globe, Cpu, Shield, Code2, BookOpen, AlertTriangle, Pencil, Trash2, Loader2, Share2 } from "lucide-react";
+import ShareCardModal from "@/components/ShareCardModal";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -49,6 +50,11 @@ export default function ProjectDetailPage() {
   const [isSavingTags, setIsSavingTags] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewContext, setReviewContext] = useState("");
+  const [isSendingReview, setIsSendingReview] = useState(false);
+  const [reviewSent, setReviewSent] = useState(false);
 
   const KNOWN_TAGS = ["Java", "Python", "JavaScript", "TypeScript", "React", "Spring Boot",
     "Node.js", "AI/ML", "DevOps", "Security", "Open Source", "Mobile",
@@ -127,6 +133,25 @@ export default function ProjectDetailPage() {
       toast({ title: "Failed to delete project", variant: "destructive" });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleReviewRequest = async () => {
+    if (!reviewContext.trim()) return;
+    setIsSendingReview(true);
+    try {
+      const res = await apiRequest("POST", `/api/projects/${id}/review-request`, { context: reviewContext });
+      if (res.ok) {
+        setReviewSent(true);
+        setReviewContext("");
+        setTimeout(() => { setShowReviewModal(false); setReviewSent(false); }, 2000);
+      } else {
+        toast({ title: "Failed to send review request", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Something went wrong", variant: "destructive" });
+    } finally {
+      setIsSendingReview(false);
     }
   };
 
@@ -452,6 +477,27 @@ export default function ProjectDetailPage() {
                 {project.hasLiked ? "Liked" : "Like"}
               </button>
             </div>
+
+            {project.analysisStatus === "analyzed" && project.analysis && (
+              <div className="space-y-2 mt-2">
+                <button
+                  onClick={() => setShowShareCard(true)}
+                  className="w-full flex items-center justify-center gap-2 text-sm py-2 rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Share Analysis
+                </button>
+                {isOwner && (
+                  <button
+                    onClick={() => setShowReviewModal(true)}
+                    className="w-full flex items-center justify-center gap-2 text-sm py-2 rounded-lg border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 transition-colors"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    Request Manual Review
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Developer */}
@@ -514,6 +560,42 @@ export default function ProjectDetailPage() {
           )}
         </div>
       </div>
+
+      {showShareCard && (
+        <ShareCardModal project={project} onClose={() => setShowShareCard(false)} />
+      )}
+
+      {showReviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setShowReviewModal(false)}>
+          <div className="w-full max-w-md bg-card border border-border rounded-2xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div>
+              <h3 className="font-semibold text-base">Request Manual Review</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Explain why you'd like a human review of your AI analysis. We'll look into it and respond at <span className="text-primary">hello@forgevibeapp.com</span>.
+              </p>
+            </div>
+            {reviewSent ? (
+              <div className="text-center py-4 text-green-400 font-medium">Request sent!</div>
+            ) : (
+              <>
+                <textarea
+                  rows={4}
+                  value={reviewContext}
+                  onChange={e => setReviewContext(e.target.value)}
+                  placeholder="e.g. The AI missed that this project uses a custom security layer..."
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-muted focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                />
+                <div className="flex gap-2">
+                  <Button onClick={handleReviewRequest} disabled={isSendingReview || !reviewContext.trim()} className="flex-1">
+                    {isSendingReview ? "Sending…" : "Send Request"}
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowReviewModal(false)}>Cancel</Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

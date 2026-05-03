@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { Loader2, CheckCircle, AlertTriangle, XCircle, Flag } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -18,6 +18,30 @@ export default function ThoughtsPage() {
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastResult, setLastResult] = useState<any>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [attempted, setAttempted] = useState(false);
+  const [showAppealInput, setShowAppealInput] = useState(false);
+  const [appealNote, setAppealNote] = useState("");
+  const [isAppealing, setIsAppealing] = useState(false);
+  const [appealSent, setAppealSent] = useState(false);
+
+  const handleAppeal = async () => {
+    if (!lastResult?.id) return;
+    setIsAppealing(true);
+    try {
+      const res = await apiRequest("POST", `/api/thoughts/${lastResult.id}/appeal`, { message: appealNote.trim() });
+      const data = await res.json();
+      if (data.ok) {
+        setAppealSent(true);
+        setShowAppealInput(false);
+      } else {
+        toast({ title: data.error || "Appeal failed", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Something went wrong", variant: "destructive" });
+    }
+    setIsAppealing(false);
+  };
 
   const { data: posts = [], isLoading, refetch } = useQuery<any[]>({
     queryKey: ["/api/thoughts"],
@@ -26,21 +50,55 @@ export default function ThoughtsPage() {
   const handleSubmit = async () => {
     if (!user) { toast({ title: "Sign in to post" }); return; }
     if (!content.trim()) return;
+    if (content.trim().length < 10) { setAttempted(true); return; }
+    setAttempted(false);
     setIsSubmitting(true);
     setLastResult(null);
+    setSubmitError(null);
+    setShowAppealInput(false);
+    setAppealNote("");
+    setAppealSent(false);
     try {
       const res = await apiRequest("POST", "/api/thoughts", { content });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const msg = body?.error ?? "Content must be at least 10 characters.";
+        setSubmitError(msg);
+        setIsSubmitting(false);
+        return;
+      }
       const data = await res.json();
-      setLastResult(data);
-      if (data.status === "published") {
+
+      // AI validation is async — poll until status leaves "pending"
+      let final = data;
+      if (data.id && data.status === "pending") {
+        for (let i = 0; i < 12; i++) {
+          await new Promise(r => setTimeout(r, 1500));
+          try {
+            const poll = await apiRequest("GET", `/api/thoughts/${data.id}`);
+            if (poll.ok) {
+              final = await poll.json();
+              if (final.status !== "pending") break;
+            }
+          } catch { break; }
+        }
+      }
+
+      setLastResult(final);
+      if (final.status === "published") {
         toast({ title: "✅ Thought published!", description: "AI validated your post as tech-relevant." });
         setContent("");
+        // Immediately insert at top of feed, then invalidate for server-fresh data
+        queryClient.setQueryData(["/api/thoughts"], (old: any[] = []) => [final, ...old]);
         queryClient.invalidateQueries({ queryKey: ["/api/thoughts"] });
-      } else if (data.status === "needs_context") {
+      } else if (final.status === "needs_context") {
         toast({ title: "⚠️ Needs more context", description: "Add technical details and resubmit.", variant: "destructive" });
-      } else {
-        toast({ title: "❌ Post blocked", description: data.aiReason || "Not tech-relevant enough.", variant: "destructive" });
+      } else if (final.status === "pending") {
+        toast({ title: "⏳ Still validating", description: "Your post is being reviewed — refresh in a moment." });
         setContent("");
+        queryClient.invalidateQueries({ queryKey: ["/api/thoughts"] });
+      } else {
+        // Keep content visible so user can see the rejection + appeal UI
       }
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
@@ -72,12 +130,17 @@ export default function ThoughtsPage() {
             <Textarea
               placeholder={user ? "Share a tech insight, architecture thought, or lesson learned..." : "Sign in to share your thoughts..."}
               value={content}
-              onChange={e => setContent(e.target.value.substring(0, 500))}
+              onChange={e => { setContent(e.target.value.substring(0, 500)); setSubmitError(null); setAttempted(false); }}
               disabled={!user || isSubmitting}
               rows={3}
-              className="resize-none"
+              className={cn("resize-none", attempted && content.trim().length < 10 ? "border-yellow-500/60 focus-visible:ring-yellow-500/40" : "")}
               data-testid="input-thought"
             />
+            {attempted && content.trim().length < 10 && (
+              <p className="text-xs text-yellow-500">
+                At least 10 characters needed ({10 - content.trim().length} more to go)
+              </p>
+            )}
             <div className="flex items-center justify-between">
               <div className="text-xs text-muted-foreground font-mono">
                 {content.length}/500 chars
@@ -104,19 +167,62 @@ export default function ThoughtsPage() {
           </div>
         </div>
 
-        {/* Last result feedback */}
-        {lastResult && lastResult.status !== "published" && (
-          <div className={cn(
-            "mt-3 p-3 rounded-lg text-xs border",
-            lastResult.status === "needs_context" ? "border-yellow-500/30 bg-yellow-500/5 text-yellow-400" : "border-red-500/30 bg-red-500/5 text-red-400"
-          )}>
-            <div className="font-semibold mb-1">
-              AI confidence: {Math.round(lastResult.aiConfidence)}% tech relevance
+        {/* Backend validation error */}
+        {submitError && (
+          <div className="mt-3 p-3 rounded-lg text-xs border border-red-500/30 bg-red-500/5 text-red-400">
+            <div className="font-semibold mb-1">Post rejected</div>
+            <div>{submitError}</div>
+          </div>
+        )}
+
+        {/* AI validation feedback */}
+        {lastResult && lastResult.status === "needs_context" && (
+          <div className="mt-3 p-3 rounded-lg text-xs border border-yellow-500/30 bg-yellow-500/5 text-yellow-400 space-y-1">
+            <div className="flex items-center gap-1.5 font-semibold">
+              <AlertTriangle className="w-3.5 h-3.5" /> Needs more context ({Math.round(lastResult.aiConfidence)}%)
             </div>
             <div>{lastResult.aiReason}</div>
-            {lastResult.status === "needs_context" && (
-              <div className="mt-1 text-muted-foreground">Add more technical details and try again.</div>
+            <div className="text-muted-foreground">Add more technical detail and try again.</div>
+          </div>
+        )}
+
+        {lastResult && lastResult.status === "blocked" && !appealSent && (
+          <div className="mt-3 p-3 rounded-lg text-xs border border-red-500/30 bg-red-500/5 text-red-400 space-y-2">
+            <div className="flex items-center gap-1.5 font-semibold">
+              <XCircle className="w-3.5 h-3.5" /> AI rejected this post ({Math.round(lastResult.aiConfidence)}%)
+            </div>
+            <div>{lastResult.aiReason}</div>
+            {!showAppealInput ? (
+              <Button size="sm" variant="outline" className="w-full border-amber-500/40 text-amber-300 hover:bg-amber-500/10 mt-1" onClick={() => setShowAppealInput(true)}>
+                <Flag className="w-3 h-3 mr-1.5" /> Request Manual Review
+              </Button>
+            ) : (
+              <div className="space-y-2 pt-1">
+                <p className="text-muted-foreground">Tell us why you think this should be published (optional):</p>
+                <Textarea
+                  placeholder="e.g. This is about distributed systems..."
+                  rows={2}
+                  value={appealNote}
+                  onChange={e => setAppealNote(e.target.value.substring(0, 300))}
+                  className="text-xs"
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setShowAppealInput(false)} disabled={isAppealing}>Cancel</Button>
+                  <Button size="sm" className="flex-1 bg-amber-600 hover:bg-amber-500 text-white" onClick={handleAppeal} disabled={isAppealing}>
+                    {isAppealing ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Submitting...</> : "Submit Appeal"}
+                  </Button>
+                </div>
+              </div>
             )}
+          </div>
+        )}
+
+        {appealSent && (
+          <div className="mt-3 p-3 rounded-lg text-xs border border-amber-500/30 bg-amber-500/5 text-amber-300 space-y-1">
+            <div className="flex items-center gap-1.5 font-semibold">
+              <CheckCircle className="w-3.5 h-3.5" /> Appeal submitted
+            </div>
+            <div>Your appeal has been received. We'll review it and get back to you within 24–48 hours.</div>
           </div>
         )}
       </div>

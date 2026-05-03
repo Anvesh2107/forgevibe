@@ -8,6 +8,7 @@ import com.forgevibe.entity.User;
 import com.forgevibe.kafka.KafkaProducerService;
 import com.forgevibe.repository.CommentRepository;
 import com.forgevibe.repository.LikeRepository;
+import com.forgevibe.repository.ProjectDiamondRepository;
 import com.forgevibe.repository.ProjectRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ class ProjectServiceTest {
     @Mock ProjectRepository projectRepo;
     @Mock LikeRepository likeRepo;
     @Mock CommentRepository commentRepo;
+    @Mock ProjectDiamondRepository diamondRepo;
     @Mock KafkaProducerService kafka;
     @Mock UserService userService;
     @Mock NotificationService notificationService;
@@ -62,6 +64,8 @@ class ProjectServiceTest {
                 .thenReturn(List.of());
         lenient().when(likeRepo.findByContentTypeAndContentIdAndUser(anyString(), anyLong(), any()))
                 .thenReturn(Optional.empty());
+        lenient().when(diamondRepo.findByProjectIdAndUser(anyLong(), any())).thenReturn(Optional.empty());
+        lenient().when(diamondRepo.findByProjectIdOrderByCreatedAtDesc(anyLong())).thenReturn(List.of());
         lenient().when(userService.toResponse(author)).thenReturn(authorResponse);
     }
 

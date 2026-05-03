@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { Bell, Trophy, Zap, PlusCircle, MessageSquare, User, ChevronDown, LogOut, Menu, X, Sun, Moon, RefreshCw, Layers } from "lucide-react";
+import { Bell, Trophy, Zap, PlusCircle, MessageSquare, User, ChevronDown, LogOut, Menu, X, Sun, Moon, RefreshCw, Layers, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -164,6 +164,11 @@ export default function Layout({ children }: { children: ReactNode }) {
                     <User className="w-4 h-4 mr-2" /> Profile
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/contact" className="cursor-pointer">
+                    <Mail className="w-4 h-4 mr-2" /> Contact
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} className="text-destructive cursor-pointer">
                   <LogOut className="w-4 h-4 mr-2" /> Log out
@@ -267,8 +272,9 @@ export default function Layout({ children }: { children: ReactNode }) {
             <span style={{ fontFamily: "'Cabinet Grotesk', sans-serif" }} className="font-semibold">ForgeVibe</span>
             <span>— Where great code rises to the top</span>
           </div>
-          <div className="text-xs">
-            Built with ⚡ by the community
+          <div className="flex items-center gap-4 text-xs">
+            <Link href="/contact" className="hover:text-foreground transition-colors">Contact</Link>
+            <span>Built with ⚡ by the community</span>
           </div>
         </div>
       </footer>

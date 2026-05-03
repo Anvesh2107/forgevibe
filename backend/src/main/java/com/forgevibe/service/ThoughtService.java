@@ -28,8 +28,16 @@ public class ThoughtService {
     private final CommentRepository commentRepo;
     private final KafkaProducerService kafka;
     private final UserService userService;
+    private final EmailService emailService;
 
     public ThoughtResponse submit(ThoughtRequest req, User author) {
+        String trimmed = req.getContent().trim();
+        if (trimmed.split("\\s+").length < 5) {
+            throw new IllegalArgumentException("Post must be at least 5 words long.");
+        }
+        if (thoughtRepo.existsByContentIgnoreCase(trimmed)) {
+            throw new IllegalArgumentException("This post already exists. Only the original author's voice counts.");
+        }
         ThoughtPost post = ThoughtPost.builder()
                 .content(req.getContent())
                 .author(author)
@@ -110,6 +118,7 @@ public class ThoughtService {
         post.setAppealMessage(message);
         post.setAppealStatus("pending");
         thoughtRepo.save(post);
+        emailService.sendAppealNotification(user.getUsername(), post.getId(), post.getContent(), message);
     }
 
     public ThoughtResponse toResponse(ThoughtPost post, User viewer) {

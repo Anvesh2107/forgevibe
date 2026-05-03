@@ -7,4 +7,5 @@ import java.util.List;
 public interface ThoughtPostRepository extends JpaRepository<ThoughtPost, Long> {
     List<ThoughtPost> findByStatusOrderByCreatedAtDesc(String status);
     List<ThoughtPost> findByAuthorIdOrderByCreatedAtDesc(Long authorId);
+    boolean existsByContentIgnoreCase(String content);
 }
