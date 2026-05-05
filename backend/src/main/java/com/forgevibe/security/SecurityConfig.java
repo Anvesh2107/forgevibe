@@ -42,6 +42,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/users/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/leaderboard/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/spaces/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/stats").permitAll()
                 .requestMatchers("/api/admin/**").authenticated()
                 .anyRequest().authenticated()
             )

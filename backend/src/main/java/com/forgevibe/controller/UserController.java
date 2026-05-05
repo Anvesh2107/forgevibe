@@ -5,6 +5,11 @@ import com.forgevibe.dto.response.SpaceResponse;
 import com.forgevibe.dto.response.ThoughtResponse;
 import com.forgevibe.dto.response.UserResponse;
 import com.forgevibe.entity.User;
+import com.forgevibe.repository.CommentRepository;
+import com.forgevibe.repository.ProjectDiamondRepository;
+import com.forgevibe.repository.ProjectRepository;
+import com.forgevibe.repository.ThoughtPostRepository;
+import com.forgevibe.repository.UserRepository;
 import com.forgevibe.security.SessionUser;
 import com.forgevibe.service.ProjectService;
 import com.forgevibe.service.SpaceService;
@@ -16,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -26,6 +32,11 @@ public class UserController {
     private final ThoughtService thoughtService;
     private final SpaceService spaceService;
     private final SessionUser sessionUser;
+    private final UserRepository userRepository;
+    private final ProjectRepository projectRepository;
+    private final ThoughtPostRepository thoughtPostRepository;
+    private final ProjectDiamondRepository projectDiamondRepository;
+    private final CommentRepository commentRepository;
 
     /** GET /api/users/:identifier — accepts numeric id OR username */
     @GetMapping("/api/users/{identifier}")
@@ -90,5 +101,17 @@ public class UserController {
     @GetMapping("/api/diamond-givers")
     public ResponseEntity<List<Object>> diamondGivers() {
         return ResponseEntity.ok(List.of());
+    }
+
+    /** GET /api/stats — platform traction numbers */
+    @GetMapping("/api/stats")
+    public ResponseEntity<Map<String, Long>> stats() {
+        return ResponseEntity.ok(Map.of(
+            "users",     userRepository.count(),
+            "projects",  projectRepository.count(),
+            "thoughts",  thoughtPostRepository.count(),
+            "diamonds",  projectDiamondRepository.count(),
+            "comments",  commentRepository.count()
+        ));
     }
 }
